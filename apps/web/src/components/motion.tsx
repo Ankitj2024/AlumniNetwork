@@ -1,6 +1,6 @@
 'use client';
 import { animate, motion, useInView, useMotionTemplate, useMotionValue, useReducedMotion, useSpring, useTransform, type HTMLMotionProps, type Variants } from 'framer-motion';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 const spring = { stiffness: 260, damping: 22, mass: 0.6 };
 
@@ -143,19 +143,20 @@ export function CountUp({ value, decimals, suffix = '', prefix = '' }: { value: 
 
 /** Circular animated score ring (match score, health). */
 export function Ring({ value, size = 52, stroke = 5, label, tone = 'brand' }: { value: number; size?: number; stroke?: number; label?: string; tone?: 'brand' | 'amber' | 'red' }) {
+  const gid = `ring${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
-  const color = tone === 'amber' ? '#f59e0b' : tone === 'red' ? '#ef4444' : 'url(#ringGrad)';
+  const color = tone === 'amber' ? '#f59e0b' : tone === 'red' ? '#ef4444' : `url(#${gid})`;
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
         <defs>
-          <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="#41bfa2" />
             <stop offset="100%" stopColor="#7563f5" />
           </linearGradient>
         </defs>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e9edf3" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" style={{ stroke: 'rgb(var(--ink-100))' }} strokeWidth={stroke} />
         <motion.circle
           cx={size / 2}
           cy={size / 2}

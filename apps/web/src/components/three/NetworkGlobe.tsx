@@ -2,6 +2,7 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { useTheme } from '@/lib/theme';
 import { arcPoints, DEG, HUBS, landDotPositions, latLngToXYZ, LINKS, networkNodes } from './globeData';
 
 /**
@@ -28,6 +29,15 @@ const C = {
   halo: new THREE.Color('#2fb597'),
 };
 
+/**
+ * Per-theme look. Dark: a night globe with glowing (additive) light. Light: a pale "paper" globe,
+ * deeper teal land and a soft halo, because additive glow washes out on a light page.
+ */
+const LOOK = {
+  dark: { land: '#52b39d', landAlpha: 1, bodyCore: '#071923', bodyRim: '#115a50', halo: '#2fb597', haloStrength: 0.55, haloAdditive: true, arcLift: 0.45, arcBase: 0.2 },
+  light: { land: '#1f8f78', landAlpha: 1.25, bodyCore: '#f4f8f9', bodyRim: '#cfe6e0', halo: '#41bfa2', haloStrength: 0.32, haloAdditive: false, arcLift: 0.0, arcBase: 0.3 },
+} as const;
+
 const v3 = (p: [number, number, number]) => new THREE.Vector3(p[0], p[1], p[2]);
 
 /* ---------------------------------------------------------------- shaders */
@@ -44,7 +54,7 @@ const landVert = /* glsl */ `
     gl_Position = projectionMatrix * mv;
   }`;
 const landFrag = /* glsl */ `
-  uniform vec3 uColor;
+  uniform vec3 uColor; uniform float uAlpha;
   varying float vFacing; varying float vLight;
   void main() {
     float d = length(gl_PointCoord - 0.5);
@@ -52,7 +62,7 @@ const landFrag = /* glsl */ `
     float edge = smoothstep(0.5, 0.3, d);
     float shade = 0.42 + 0.58 * vLight;
     float limb = smoothstep(0.0, 0.45, vFacing);
-    gl_FragColor = vec4(uColor * shade, edge * (0.2 + 0.5 * limb));
+    gl_FragColor = vec4(uColor * shade, min(1.0, edge * (0.2 + 0.5 * limb) * uAlpha));
   }`;
 
 const bodyVert = /* glsl */ `
@@ -76,14 +86,14 @@ const haloVert = /* glsl */ `
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }`;
 const haloFrag = /* glsl */ `
-  uniform vec3 uColor;
+  uniform vec3 uColor; uniform float uStrength;
   varying float vFacing;
   void main() {
     // s = distance from the globe's centre as a fraction of the halo radius (0.855 = body edge).
     // Brightest where the halo meets the globe, fading to nothing at its outer edge.
     float s = sqrt(1.0 - vFacing * vFacing);
     float i = pow(1.0 - smoothstep(0.85, 1.0, s), 2.2);
-    gl_FragColor = vec4(uColor, 1.0) * i * 0.55;
+    gl_FragColor = vec4(uColor, i * uStrength);
   }`;
 
 const arcVert = /* glsl */ `
@@ -94,7 +104,7 @@ const arcVert = /* glsl */ `
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }`;
 const arcFrag = /* glsl */ `
-  uniform float uTime; uniform float uSpeed; uniform float uOffset; uniform float uStatic;
+  uniform float uTime; uniform float uSpeed; uniform float uOffset; uniform float uStatic; uniform float uLift; uniform float uBase;
   uniform vec3 uA; uniform vec3 uB;
   varying float vT; varying float vFacing;
   void main() {
@@ -106,7 +116,7 @@ const arcFrag = /* glsl */ `
     float d = head - vT;
     float tail = step(0.0, d) * (1.0 - smoothstep(0.0, 0.3, d));
     float glow = pow(tail, 1.8);
-    gl_FragColor = vec4(col + vec3(0.45) * glow * glow, (0.2 + 0.8 * glow) * ends);
+    gl_FragColor = vec4(col + vec3(uLift) * glow * glow, (uBase + (1.0 - uBase) * glow) * ends);
   }`;
 
 const hubVert = /* glsl */ `
@@ -141,16 +151,16 @@ function buildScene() {
   const landMat = new THREE.ShaderMaterial({
     vertexShader: landVert,
     fragmentShader: landFrag,
-    uniforms: { uColor: { value: C.land }, uScale: { value: 500 }, uSize: { value: 0.026 } },
+    uniforms: { uColor: { value: C.land.clone() }, uAlpha: { value: 1 }, uScale: { value: 500 }, uSize: { value: 0.026 } },
     transparent: true,
     depthWrite: false,
   });
 
   const body = new THREE.SphereGeometry(R * 0.992, 64, 64);
-  const bodyMat = new THREE.ShaderMaterial({ vertexShader: bodyVert, fragmentShader: bodyFrag, uniforms: { uCore: { value: C.bodyCore }, uRim: { value: C.bodyRim } } });
+  const bodyMat = new THREE.ShaderMaterial({ vertexShader: bodyVert, fragmentShader: bodyFrag, uniforms: { uCore: { value: C.bodyCore.clone() }, uRim: { value: C.bodyRim.clone() } } });
 
   const halo = new THREE.SphereGeometry(R * 1.16, 64, 64);
-  const haloMat = new THREE.ShaderMaterial({ vertexShader: haloVert, fragmentShader: haloFrag, uniforms: { uColor: { value: C.halo } }, side: THREE.BackSide, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+  const haloMat = new THREE.ShaderMaterial({ vertexShader: haloVert, fragmentShader: haloFrag, uniforms: { uColor: { value: C.halo.clone() }, uStrength: { value: 0.55 } }, side: THREE.BackSide, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
 
   const hubDir = new Map(HUBS.map((h) => [h.name, latLngToXYZ(h.lat, h.lng)]));
   const hubColor = (name: string) => (HUBS.find((h) => h.name === name)!.side === 'campus' ? C.campus : C.alumni);
@@ -172,7 +182,7 @@ function buildScene() {
     const mat = new THREE.ShaderMaterial({
       vertexShader: arcVert,
       fragmentShader: arcFrag,
-      uniforms: { uTime: { value: 0 }, uSpeed: { value: 0.16 + ((i * 37) % 11) / 100 }, uOffset: { value: (i * 0.618) % 1 }, uStatic: { value: 0 }, uA: { value: hubColor(from) }, uB: { value: hubColor(to) } },
+      uniforms: { uTime: { value: 0 }, uSpeed: { value: 0.16 + ((i * 37) % 11) / 100 }, uOffset: { value: (i * 0.618) % 1 }, uStatic: { value: 0 }, uLift: { value: 0.45 }, uBase: { value: 0.2 }, uA: { value: hubColor(from) }, uB: { value: hubColor(to) } },
       transparent: true,
       depthWrite: false,
     });
@@ -194,11 +204,28 @@ function buildScene() {
   return { land, landMat, body, bodyMat, halo, haloMat, hubs, hubMat, arcs, ringGeo, rings, dispose };
 }
 
-function Earth({ animate, interactive, drag }: { animate: boolean; interactive: boolean; drag: React.RefObject<Drag> }) {
+function Earth({ animate, interactive, drag, theme }: { animate: boolean; interactive: boolean; drag: React.RefObject<Drag>; theme: 'light' | 'dark' }) {
   const tilt = useRef<THREE.Group>(null);
   const spin = useRef<THREE.Group>(null);
   const ringRefs = useRef<(THREE.Mesh | null)[]>([]);
   const s = useMemo(buildScene, []);
+  const invalidate = useThree((st) => st.invalidate);
+  useEffect(() => {
+    const L = LOOK[theme];
+    s.landMat.uniforms.uColor.value.set(L.land);
+    s.landMat.uniforms.uAlpha.value = L.landAlpha;
+    s.bodyMat.uniforms.uCore.value.set(L.bodyCore);
+    s.bodyMat.uniforms.uRim.value.set(L.bodyRim);
+    s.haloMat.uniforms.uColor.value.set(L.halo);
+    s.haloMat.uniforms.uStrength.value = L.haloStrength;
+    s.haloMat.blending = L.haloAdditive ? THREE.AdditiveBlending : THREE.NormalBlending;
+    s.haloMat.needsUpdate = true;
+    s.arcs.forEach((a) => {
+      a.mat.uniforms.uLift.value = L.arcLift;
+      a.mat.uniforms.uBase.value = L.arcBase;
+    });
+    invalidate(); // redraw once even when the frame loop is idle (reduced motion)
+  }, [theme, s, invalidate]);
   useEffect(() => s.dispose, [s]);
 
   useFrame((state, delta) => {
@@ -258,6 +285,7 @@ function Earth({ animate, interactive, drag }: { animate: boolean; interactive: 
 }
 
 export default function NetworkGlobe({ className = '', interactive = true }: { className?: string; interactive?: boolean }) {
+  const { theme } = useTheme();
   const wrap = useRef<HTMLDivElement>(null);
   const drag = useRef<Drag>({ active: false, x: 0, y: 0, vel: 0, pendingY: 0, tilt: 0 });
   // Client-only component (loaded with ssr:false), so the preference is known on first render.
@@ -316,7 +344,7 @@ export default function NetworkGlobe({ className = '', interactive = true }: { c
         gl={{ antialias: true, alpha: true, powerPreference: 'low-power' }}
         frameloop={reduce ? 'demand' : visible ? 'always' : 'never'}
       >
-        <Earth animate={!reduce} interactive={canDrag} drag={drag} />
+        <Earth animate={!reduce} interactive={canDrag} drag={drag} theme={theme} />
       </Canvas>
     </div>
   );

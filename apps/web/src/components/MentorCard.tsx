@@ -2,6 +2,7 @@
 import { MapPin, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { AREA_LABELS } from '@/lib/format';
+import { useTheme } from '@/lib/theme';
 import type { Mentor } from '@/lib/types';
 import { Ring, Tilt } from './motion';
 import ShinyText from './reactbits/ShinyText';
@@ -14,10 +15,11 @@ import { Avatar, Badge, CapacityMeter } from './ui';
  * React Bits SpotlightCard gives cursor-following light; a gentle 3D tilt keeps the depth of the brand.
  */
 export function MentorCard({ m, topMatch = false }: { m: Mentor; topMatch?: boolean }) {
+  const { theme } = useTheme();
   return (
     <Tilt className="group h-full rounded-2xl" max={4} glare={false} scale={1.01}>
       <Link href={`/mentors/${m.id}`} className="block h-full rounded-2xl focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--ring)]">
-        <SpotlightCard theme="light" spotlightColor="#1fa388" intensity={0.14} spotlightSize={260} className="flex h-full flex-col !rounded-2xl !p-5 transition-shadow duration-300 group-hover:shadow-depth">
+        <SpotlightCard theme={theme} spotlightColor="#1fa388" intensity={0.14} spotlightSize={260} className="flex h-full flex-col !rounded-2xl !p-5 transition-shadow duration-300 group-hover:shadow-depth">
           <div className="flex items-start justify-between gap-3">
             <Avatar name={m.name} size="lg" />
             <div className="flex flex-col items-end gap-1.5">
@@ -29,7 +31,7 @@ export function MentorCard({ m, topMatch = false }: { m: Mentor; topMatch?: bool
             {topMatch && (
               <div className="mb-1.5 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-brand-50 to-violet-50 px-2 py-0.5 ring-1 ring-inset ring-brand-200">
                 <Sparkles size={11} className="text-brand-600" />
-                <ShinyText text="Top match for you" color="#12695a" shineColor="#7563f5" speed={3} className="text-[10.5px] font-semibold" />
+                <ShinyText text="Top match for you" color={theme === 'dark' ? '#78d8bf' : '#12695a'} shineColor={theme === 'dark' ? '#b4a8ff' : '#7563f5'} speed={3} className="text-[10.5px] font-semibold" />
               </div>
             )}
             <div className="flex items-center gap-1.5">

@@ -266,7 +266,9 @@ This is a production setup: put the values it asks for (`JWT_SECRET`, `DATA_ENCR
 
 ## UI design system & credits
 
-**Direction — "calm depth".** Marketing and sign-in screens are expressive: a midnight canvas, one 3D focal point (the live Three.js globe) and kinetic type. The product itself is calm and fast to scan: a light canvas, crisp surfaces, Geist for the interface and Instrument Serif italic only as an editorial accent. Motion is used where it explains a change of state: entrances, selection, success feedback and progress. Every animation respects the OS "reduce motion" setting.
+**Direction — "calm depth".** Marketing and sign-in screens are expressive: one 3D focal point (the live Three.js globe) and kinetic type. The product itself is calm and fast to scan: crisp surfaces, Geist for the interface and Instrument Serif italic only as an editorial accent. Motion is used where it explains a change of state: entrances, selection, success feedback and progress. Every animation respects the OS "reduce motion" setting.
+
+**Light and dark themes.** Every screen has both. A sun/moon toggle sits in the landing header, the corner of the sign-in pages, the app sidebar and the phone top bar; ⌘K has "Switch theme"; Settings → Appearance offers Light, Dark or System (the default, which follows the device). The choice is remembered per browser, applied by a tiny script in `<head>` before the first paint (no flash of the wrong theme), and kept in step across open tabs. Colours are CSS variables (`apps/web/src/app/globals.css`): the neutral `ink` scale flips between themes, so `text-ink-900` is always primary text, while `surface`, `canvas` and the shadows switch with it. Coloured status tints get dark-mode equivalents in the same file. The globe has its own look per theme: a night globe with glowing light in dark mode, a pale "paper" globe in light mode.
 
 **UX upgrades**
 - Grouped, collapsible sidebar with icons, plus a mobile bottom tab bar and a "More" sheet.

@@ -83,15 +83,15 @@ export function LogoMark({ size = 32, className = '', variant = 'tile', animated
 }
 
 /**
- * Mark + wordmark lockup. `tone` is the background it sits on. `compact` drops "Network" on
- * very narrow screens (< 440px) where the lockup shares a row with buttons.
+ * Mark + wordmark lockup. The wordmark follows the light/dark theme. `compact` drops "Network"
+ * below 440px and the whole wordmark below 380px, where the lockup shares a row with buttons.
  */
-export function Logo({ size = 34, tone = 'dark', compact = false, className = '' }: { size?: number; tone?: 'dark' | 'light'; compact?: boolean; className?: string }) {
+export function Logo({ size = 34, compact = false, className = '' }: { size?: number; compact?: boolean; className?: string }) {
   return (
     <span className={`inline-flex items-center gap-2.5 ${className}`}>
       <LogoMark size={size} />
-      <span className={`whitespace-nowrap text-[15px] font-semibold tracking-[-0.02em] ${tone === 'dark' ? 'text-white' : 'text-ink-900'}`}>
-        Alumni Mentor <span className={`font-medium ${tone === 'dark' ? 'text-white/55' : 'text-ink-500'} ${compact ? 'max-[440px]:hidden' : ''}`}>Network</span>
+      <span className={`whitespace-nowrap text-[15px] font-semibold tracking-[-0.02em] text-ink-950 ${compact ? 'max-[380px]:hidden' : ''}`}>
+        Alumni Mentor <span className={`font-medium text-ink-500 ${compact ? 'max-[440px]:hidden' : ''}`}>Network</span>
       </span>
     </span>
   );

@@ -4,6 +4,7 @@ import { Check, Clock, Inbox, PauseCircle, PlayCircle, ShieldCheck, Sparkles, Ta
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
+import { useTheme } from '@/lib/theme';
 import { Ring } from '@/components/motion';
 import AnimatedList from '@/components/reactbits/AnimatedList';
 import ClickSpark from '@/components/reactbits/ClickSpark';
@@ -23,6 +24,7 @@ type Cap = Capacity & { maxPendingRequests: number; pendingRequests: number; vis
  */
 function Dashboard() {
   const toast = useToast();
+  const { theme } = useTheme();
   const router = useRouter();
   const params = useSearchParams();
   const { me } = useAuth();
@@ -157,7 +159,7 @@ function Dashboard() {
         actions={
           c && (
             <>
-              <div className="hidden items-center gap-3 rounded-[10px] border border-[color:var(--line)] bg-white px-3 py-1.5 shadow-sm sm:flex">
+              <div className="hidden items-center gap-3 rounded-[10px] border border-[color:var(--line)] bg-surface px-3 py-1.5 shadow-sm sm:flex">
                 <CapacityMeter capacity={c} compact />
               </div>
               <button className="btn-secondary" onClick={togglePause}>
@@ -170,7 +172,7 @@ function Dashboard() {
       />
 
       {full && pending.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="mb-5 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-white p-4 text-[13px] text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+        <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="mb-5 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-surface p-4 text-[13px] text-amber-900 dark:from-amber-500/10 dark:to-transparent sm:flex-row sm:items-center sm:justify-between">
           <span>
             <strong>You’re at capacity</strong>, so accepting is paused. Raise your limit, or decline — students are shown other mentors straight away.
           </span>
@@ -198,7 +200,7 @@ function Dashboard() {
             </div>
             <AnimatedList
               key={pending.map((p) => p.id).join(',')}
-              theme="light"
+              theme={theme}
               accentColor="#1fa388"
               width="100%"
               maxHeight={560}
@@ -239,7 +241,7 @@ function Dashboard() {
             {selected && (
               <motion.div key={selected.id} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}>
                 <div className="card overflow-hidden">
-                  <div className="relative border-b border-[color:var(--line)] bg-gradient-to-br from-brand-50/70 via-white to-violet-50/60 p-5 sm:p-6">
+                  <div className="relative border-b border-[color:var(--line)] bg-gradient-to-br from-brand-50/70 via-surface to-violet-50/60 p-5 sm:p-6 dark:from-brand-500/10 dark:via-transparent dark:to-iris-500/10">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-center gap-3.5">
                         <Avatar name={selected.student!.name} size="lg" />

@@ -21,7 +21,7 @@ const NEVER = ['Email address', 'Phone number', 'LinkedIn or other social profil
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-surface">
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
         <Link href="/" className="text-sm text-brand-700">
           ← Alumni Mentor Network

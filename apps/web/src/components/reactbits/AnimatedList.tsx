@@ -60,11 +60,11 @@ interface Engine {
 
 const THEMES: Record<'dark' | 'light', Record<string, string>> = {
   dark: {
-    '--al-frame': 'rgba(38, 35, 46, 0.66)',
+    '--al-frame': 'rgba(17, 24, 35, 0.72)',
     '--al-frame-edge': 'rgba(255, 255, 255, 0.08)',
     '--al-frame-highlight': 'rgba(255, 255, 255, 0.07)',
     '--al-frame-shadow': '0 22px 44px -20px rgba(0, 0, 0, 0.8), 0 6px 16px -8px rgba(0, 0, 0, 0.5)',
-    '--al-tile': 'linear-gradient(180deg, #3a3644 0%, #27242f 100%)',
+    '--al-tile': 'linear-gradient(180deg, #1f2939 0%, #161f2d 100%)',
     '--al-tile-edge': 'rgba(255, 255, 255, 0.07)',
     '--al-tile-highlight': 'rgba(255, 255, 255, 0.12)',
     '--al-tile-shadow': '0 4px 10px -4px rgba(0, 0, 0, 0.7)',

@@ -7,6 +7,7 @@ import { LogoMark } from './Logo';
 import { CountUp } from './motion';
 import SpotlightCard from './reactbits/SpotlightCard';
 import { initials } from '@/lib/format';
+import { useTheme } from '@/lib/theme';
 import type { Capacity } from '@/lib/types';
 
 export function cx(...c: (string | false | null | undefined)[]) {
@@ -34,7 +35,7 @@ export function PageHeader({ title, subtitle, actions, eyebrow, icon: Icon }: { 
         {(eyebrow || Icon) && (
           <div className="mb-2 flex items-center gap-2">
             {Icon && (
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-[color:var(--line)] bg-white text-brand-600 shadow-sm">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-[color:var(--line)] bg-surface text-brand-600 shadow-sm">
                 <Icon size={15} />
               </span>
             )}
@@ -104,8 +105,9 @@ export function statusTone(s: string): keyof typeof TONES {
 export const StatusBadge = ({ status }: { status: string }) => <Badge tone={statusTone(status)}>{status.replace(/_/g, ' ')}</Badge>;
 
 export function Stat({ label, value, hint, tone }: { label: string; value: React.ReactNode; hint?: React.ReactNode; tone?: 'warn' | 'bad' | 'good' }) {
+  const { theme } = useTheme();
   return (
-    <SpotlightCard theme="light" spotlightColor={tone === 'warn' ? '#f59e0b' : tone === 'bad' ? '#ef4444' : '#1fa388'} intensity={0.12} spotlightSize={220} className="!rounded-2xl !p-4">
+    <SpotlightCard theme={theme} spotlightColor={tone === 'warn' ? '#f59e0b' : tone === 'bad' ? '#ef4444' : '#1fa388'} intensity={0.12} spotlightSize={220} className="!rounded-2xl !p-4">
       <div className="flex items-center gap-2">
         <span className={cx('h-1.5 w-1.5 rounded-full', tone === 'warn' ? 'bg-amber-500' : tone === 'bad' ? 'bg-red-500' : tone === 'good' ? 'bg-brand-500' : 'bg-ink-300')} />
         <span className="eyebrow">{label}</span>
@@ -120,10 +122,10 @@ export function Stat({ label, value, hint, tone }: { label: string; value: React
 
 export function EmptyState({ title, body, action }: { title: string; body?: React.ReactNode; action?: React.ReactNode }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="canvas-dots rounded-2xl border border-dashed border-ink-200 bg-white/60 px-6 py-12 text-center">
+    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="canvas-dots rounded-2xl border border-dashed border-ink-200 bg-surface/60 px-6 py-12 text-center">
       <div className="relative mx-auto mb-4 h-12 w-12" style={{ perspective: 300 }} aria-hidden>
         <div className="absolute inset-0 animate-float rounded-2xl bg-gradient-to-br from-brand-300 to-iris-400 opacity-90 shadow-glow" />
-        <div className="absolute inset-[5px] rounded-xl bg-white/90" />
+        <div className="absolute inset-[5px] rounded-xl bg-surface/90" />
         <div className="absolute inset-[14px] rounded-md bg-gradient-to-br from-brand-400 to-iris-500" />
       </div>
       <p className="font-medium text-ink-800">{title}</p>
@@ -143,9 +145,9 @@ export function Avatar({ name, size = 'md', src }: { name: string; size?: 'sm' |
   const s = size === 'sm' ? 'h-8 w-8 text-xs' : size === 'lg' ? 'h-14 w-14 text-lg' : 'h-10 w-10 text-sm';
   const g = AVATAR_GRADS[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % AVATAR_GRADS.length];
   // eslint-disable-next-line @next/next/no-img-element
-  if (src) return <img src={src} alt="" referrerPolicy="no-referrer" className={cx('shrink-0 rounded-full object-cover shadow-md ring-2 ring-white', s)} />;
+  if (src) return <img src={src} alt="" referrerPolicy="no-referrer" className={cx('shrink-0 rounded-full object-cover shadow-md ring-2 ring-surface', s)} />;
   return (
-    <div className={cx('flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br font-semibold text-white shadow-[0_4px_12px_-2px_rgba(21,28,39,.35),inset_0_1px_0_rgba(255,255,255,.35)] ring-2 ring-white', g, s)}>
+    <div className={cx('flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br font-semibold text-white shadow-[0_4px_12px_-2px_rgba(21,28,39,.35),inset_0_1px_0_rgba(255,255,255,.35)] ring-2 ring-surface', g, s)}>
       {initials(name)}
     </div>
   );
@@ -187,11 +189,11 @@ export function Modal({ open, onClose, title, children, footer }: { open: boolea
   return (
     <AnimatePresence>
       {open && (
-        <motion.div className="fixed inset-0 z-50 flex items-end justify-center bg-ink-950/50 p-0 backdrop-blur-sm sm:items-center sm:p-4" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+        <motion.div className="fixed inset-0 z-50 flex items-end justify-center bg-night/50 p-0 backdrop-blur-sm dark:bg-black/60 sm:items-center sm:p-4" onClick={onClose} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
           <motion.div
             role="dialog"
             aria-modal
-            className="max-h-[92vh] w-full overflow-auto rounded-t-3xl border border-white/70 bg-white shadow-depth sm:max-w-lg sm:rounded-3xl"
+            className="max-h-[92vh] w-full overflow-auto rounded-t-3xl border border-[color:var(--line)] bg-surface shadow-depth sm:max-w-lg sm:rounded-3xl"
             onClick={(e) => e.stopPropagation()}
             initial={{ opacity: 0, y: 40, rotateX: 18, scale: 0.94 }}
             animate={{ opacity: 1, y: 0, rotateX: 0, scale: 1 }}
@@ -301,7 +303,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
               exit={{ opacity: 0, y: 12, scale: 0.95 }}
               transition={{ type: 'spring', stiffness: 320, damping: 26 }}
-              className={cx('pointer-events-auto max-w-md rounded-xl px-4 py-2.5 text-sm font-medium shadow-depth backdrop-blur', t.tone === 'ok' ? 'bg-ink-900/95 text-white' : 'bg-red-700/95 text-white')}
+              className={cx('pointer-events-auto max-w-md rounded-xl px-4 py-2.5 text-sm font-medium shadow-depth backdrop-blur', t.tone === 'ok' ? 'bg-ink-900/95 text-ink-50' : 'bg-red-700/95 text-white')}
             >
               {t.text}
             </motion.div>

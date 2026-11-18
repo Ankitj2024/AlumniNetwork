@@ -40,9 +40,11 @@ type Settings = {
   grain: number;
 };
 
+// Adapted for this app: surfaces, borders and shadows come from the theme tokens in globals.css,
+// so a card follows the light/dark theme; `theme` only tunes how strong the spotlight is.
 const THEMES: Record<'dark' | 'light', Palette> = {
   dark: {
-    surface: '#111111',
+    surface: 'rgb(var(--surface))',
     border: 'rgba(255, 255, 255, 0.08)',
     shadow: '0 24px 48px -24px rgba(0, 0, 0, 0.6)',
     light: '#ffffff',
@@ -50,9 +52,9 @@ const THEMES: Record<'dark' | 'light', Palette> = {
     edge: 1
   },
   light: {
-    surface: '#ffffff',
-    border: 'rgba(24, 24, 27, 0.1)',
-    shadow: '0 1px 2px rgba(24, 24, 27, 0.04), 0 18px 40px -20px rgba(24, 24, 27, 0.16)',
+    surface: 'rgb(var(--surface))',
+    border: 'var(--line-strong)',
+    shadow: 'var(--shadow-card)',
     light: '#18181b',
     fill: 0.28,
     edge: 0.7

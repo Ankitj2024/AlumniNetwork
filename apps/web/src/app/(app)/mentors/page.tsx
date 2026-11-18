@@ -60,7 +60,7 @@ export default function DiscoverPage() {
       <h3 className="eyebrow mb-1.5 px-2">{title}</h3>
       <div className="space-y-1">
         {items.slice(0, 10).map((f) => (
-          <label key={f.value} className="flex cursor-pointer items-center justify-between gap-2 rounded-lg px-2 py-1 text-[13px] text-ink-700 transition-colors hover:bg-white">
+          <label key={f.value} className="flex cursor-pointer items-center justify-between gap-2 rounded-lg px-2 py-1 text-[13px] text-ink-700 transition-colors hover:bg-surface">
             <span className="flex items-center gap-2">
               <input type="checkbox" className="rounded border-ink-300 text-brand-600" checked={value.includes(f.value)} onChange={() => onToggle(f.value)} />
               {label ? label(f.value) : f.value}
@@ -81,7 +81,7 @@ export default function DiscoverPage() {
         subtitle={isStudent ? 'Ranked by fit with your goals. Only mentors who can take you on right now are shown — so every request reaches someone able to say yes.' : 'Verified alumni mentors.'}
       />
 
-      <div className="sticky top-14 z-10 -mx-4 mb-5 border-b border-[color:var(--line)] bg-[#f6f7f9]/85 px-4 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-0">
+      <div className="sticky top-14 z-10 -mx-4 mb-5 border-b border-[color:var(--line)] bg-canvas/85 px-4 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-0">
         <div className="flex flex-col gap-2.5 sm:flex-row">
           <div className="relative flex-1 sm:max-w-lg">
             <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
@@ -134,7 +134,7 @@ export default function DiscoverPage() {
 
       <div className="grid gap-7 lg:grid-cols-[232px_1fr]">
         <aside className={cx('space-y-5 lg:sticky lg:top-6 lg:block lg:max-h-[calc(100vh-48px)] lg:self-start lg:overflow-y-auto lg:pr-1', filtersOpen ? 'block' : 'hidden')}>
-          <label className="flex cursor-pointer items-center justify-between gap-2 rounded-xl border border-brand-200 bg-gradient-to-r from-brand-50 to-white px-3 py-2.5 text-[13px] font-medium text-brand-900">
+          <label className="flex cursor-pointer items-center justify-between gap-2 rounded-xl border border-brand-200 bg-gradient-to-r from-brand-50 to-surface px-3 py-2.5 text-[13px] font-medium text-brand-900">
             Accepting mentees now
             <span className={cx('relative h-5 w-9 rounded-full transition-colors', hasCapacity ? 'bg-brand-500' : 'bg-ink-200')}>
               <input type="checkbox" checked={hasCapacity} onChange={(e) => setHasCapacity(e.target.checked)} className="peer absolute inset-0 cursor-pointer opacity-0" />

@@ -23,7 +23,7 @@ export function GoogleButton({ role, next, label = 'Continue with Google' }: { r
     </svg>
   );
 
-  const cls = 'btn w-full border border-ink-200 bg-white text-ink-800 shadow-sm hover:-translate-y-0.5 hover:shadow-md';
+  const cls = 'btn w-full border border-ink-200 bg-surface text-ink-800 shadow-sm hover:-translate-y-0.5 hover:shadow-md';
   if (enabled === false) {
     return (
       <div>

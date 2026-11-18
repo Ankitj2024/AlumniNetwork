@@ -41,7 +41,7 @@ function RegisterForm() {
       <div className="grid grid-cols-2 gap-1 rounded-xl bg-ink-100 p-1">
         {(['student', 'alumnus'] as const).map((r) => (
           <button type="button" key={r} onClick={() => setRole(r)} className={cx('relative rounded-lg py-2 text-sm font-semibold transition-colors', role === r ? 'text-ink-900' : 'text-ink-500 hover:text-ink-700')}>
-            {role === r && <motion.span layoutId="role-pill" className="absolute inset-0 rounded-lg bg-white shadow-card" transition={{ type: 'spring', stiffness: 380, damping: 30 }} />}
+            {role === r && <motion.span layoutId="role-pill" className="absolute inset-0 rounded-lg bg-surface shadow-card" transition={{ type: 'spring', stiffness: 380, damping: 30 }} />}
             <span className="relative">{r === 'student' ? 'Student' : 'Alumnus / mentor'}</span>
           </button>
         ))}
@@ -71,7 +71,7 @@ function RegisterForm() {
 
 export default function RegisterPage() {
   return (
-    <AuthFrame title="Create your account" subtitle="Join as a student looking for guidance, or as an alumnus ready to give it." footer={<>Already have an account? <Link className="font-semibold text-brand-300 hover:text-brand-200" href="/login">Sign in</Link></>}>
+    <AuthFrame title="Create your account" subtitle="Join as a student looking for guidance, or as an alumnus ready to give it." footer={<>Already have an account? <Link className="font-semibold text-brand-700 hover:text-brand-800" href="/login">Sign in</Link></>}>
       <Suspense>
         <RegisterForm />
       </Suspense>

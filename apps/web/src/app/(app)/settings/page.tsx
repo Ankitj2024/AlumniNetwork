@@ -3,6 +3,7 @@ import { Settings2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { SecurityCard } from '@/components/SecurityCard';
+import { ThemePicker } from '@/components/ThemeToggle';
 import { Badge, Card, Field, PageHeader, PageLoader, Spinner, useToast } from '@/components/ui';
 import { del, get, patch } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -69,6 +70,10 @@ function Inner() {
           </div>
         </Card>
         <div className="space-y-6">
+          <Card title="Appearance">
+            <p className="mb-3 text-[13px] text-ink-500">Choose a theme, or follow your device’s setting. It’s remembered on this device.</p>
+            <ThemePicker />
+          </Card>
           <Card title="Notifications">
             <div className="space-y-3 text-sm">
               <label className="flex items-center gap-2">

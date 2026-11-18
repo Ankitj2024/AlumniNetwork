@@ -3,6 +3,7 @@ import { CheckCircle2, FileText, GraduationCap, IdCard, ShieldCheck, Upload } fr
 import { useState } from 'react';
 import { api } from '@/lib/api';
 import { fmtDateTime } from '@/lib/format';
+import { useTheme } from '@/lib/theme';
 import Stepper, { Step } from './reactbits/Stepper';
 import { Badge, Card, ErrorBox, Field, Spinner, StatusBadge, useToast } from './ui';
 
@@ -13,6 +14,7 @@ import { Badge, Card, ErrorBox, Field, Spinner, StatusBadge, useToast } from './
  */
 export function VerificationWizard({ v, departments, onDone }: { v: any; departments: string[]; onDone: () => void }) {
   const toast = useToast();
+  const { theme } = useTheme();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({ fullName: '', dateOfBirth: '', rollNumber: '', graduationYear: '', degree: 'B.Tech', department: '' });
   const [files, setFiles] = useState<File[]>([]);
@@ -80,7 +82,7 @@ export function VerificationWizard({ v, departments, onDone }: { v: any; departm
             step={step}
             onStepChange={(n) => setStep(n)}
             onFinalStepCompleted={submit}
-            theme="light"
+            theme={theme}
             accentColor="#1fa388"
             width="100%"
             frame={false}

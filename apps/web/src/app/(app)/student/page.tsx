@@ -79,7 +79,7 @@ export default function StudentHome() {
 
       {/* hero: next best action */}
       <Tilt max={3} glare className="mb-6 rounded-3xl">
-        <div className="relative overflow-hidden rounded-3xl bg-ink-950 p-6 text-white shadow-depth sm:p-8">
+        <div className="relative overflow-hidden rounded-3xl bg-night p-6 text-white shadow-depth ring-1 ring-white/[0.06] sm:p-8">
           <div aria-hidden className="absolute -right-16 -top-24 h-72 w-72 animate-aurora rounded-full bg-brand-500/40 blur-3xl" />
           <div aria-hidden className="absolute -bottom-24 right-24 h-64 w-64 animate-aurora-slow rounded-full bg-iris-500/40 blur-3xl" />
           <div aria-hidden className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,.07)_1px,transparent_1px)] [background-size:20px_20px]" />
@@ -91,7 +91,7 @@ export default function StudentHome() {
               </div>
               <h2 className="text-[22px] font-semibold leading-tight tracking-[-0.02em] sm:text-[26px]">{hero.title}</h2>
               <p className="mt-2 text-[14px] text-white/70">{hero.body}</p>
-              <Link href={hero.href} className="btn mt-5 bg-white px-4 py-2.5 text-ink-900 shadow-lg hover:bg-brand-50">
+              <Link href={hero.href} className="btn mt-5 bg-white px-4 py-2.5 text-night shadow-lg hover:bg-[#eefbf7]">
                 {hero.cta} <ArrowRight size={15} />
               </Link>
             </div>
@@ -166,7 +166,7 @@ export default function StudentHome() {
               <ol className="relative space-y-4 border-l border-[color:var(--line-strong)] pl-5">
                 {recent.map((r) => (
                   <li key={r.id} className="relative">
-                    <span className={`absolute -left-[26px] top-1 h-3 w-3 rounded-full ring-4 ring-white ${r.status === 'accepted' ? 'bg-brand-500' : r.status === 'pending' ? 'bg-amber-400' : 'bg-ink-300'}`} />
+                    <span className={`absolute -left-[26px] top-1 h-3 w-3 rounded-full ring-4 ring-surface ${r.status === 'accepted' ? 'bg-brand-500' : r.status === 'pending' ? 'bg-amber-400' : 'bg-ink-300'}`} />
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">

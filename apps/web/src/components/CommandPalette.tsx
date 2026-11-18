@@ -1,6 +1,7 @@
 'use client';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowRight, CornerDownLeft, LogOut, Search, UserRound } from 'lucide-react';
+import { ArrowRight, CornerDownLeft, LogOut, Moon, Search, Sun, UserRound } from 'lucide-react';
+import { useTheme } from '@/lib/theme';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { get } from '@/lib/api';
@@ -19,6 +20,7 @@ export const openCommandPalette = () => window.dispatchEvent(new Event('open-com
  */
 export function CommandPalette() {
   const { me, logout } = useAuth();
+  const { theme, toggle: toggleTheme } = useTheme();
   const router = useRouter();
   const path = usePathname();
   const [open, setOpen] = useState(false);
@@ -82,11 +84,14 @@ export function CommandPalette() {
     if (!me) return [];
     const pages: Cmd[] = [...flatNav(me.user.role), ...ACCOUNT_NAV].map((n) => ({ id: n.href, label: n.label, group: 'Go to', icon: n.icon, run: () => go(n.href), keywords: n.keywords }));
     const people: Cmd[] = mentors.map((m) => ({ id: `m-${m.id}`, label: m.name, hint: m.headline ?? undefined, group: 'Mentors', icon: UserRound, run: () => go(`/mentors/${m.id}`) }));
-    const actions: Cmd[] = [{ id: 'logout', label: 'Sign out', group: 'Account', icon: LogOut, run: () => logout() }];
+    const actions: Cmd[] = [
+      { id: 'theme', label: theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme', group: 'Account', icon: theme === 'dark' ? Sun : Moon, run: () => (setOpen(false), toggleTheme()), keywords: 'theme appearance dark light mode' },
+      { id: 'logout', label: 'Sign out', group: 'Account', icon: LogOut, run: () => logout() },
+    ];
     const needle = q.trim().toLowerCase();
     const match = (c: Cmd) => !needle || `${c.label} ${c.keywords ?? ''} ${c.hint ?? ''}`.toLowerCase().includes(needle);
     return [...people, ...pages.filter(match), ...actions.filter(match)];
-  }, [me, mentors, q, go, logout]);
+  }, [me, mentors, q, go, logout, theme, toggleTheme]);
 
   useEffect(() => setActive(0), [q, mentors.length]);
 
@@ -98,11 +103,11 @@ export function CommandPalette() {
   return (
     <AnimatePresence>
       {open && (
-        <motion.div className="fixed inset-0 z-[70] flex items-start justify-center bg-ink-950/40 px-4 pt-[12vh] backdrop-blur-[3px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setOpen(false)}>
+        <motion.div className="fixed inset-0 z-[70] flex items-start justify-center bg-night/40 px-4 pt-[12vh] dark:bg-black/60 backdrop-blur-[3px]" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setOpen(false)}>
           <motion.div
             role="dialog"
             aria-label="Command palette"
-            className="w-full max-w-xl overflow-hidden rounded-2xl border border-[color:var(--line)] bg-white shadow-[0_32px_80px_-20px_rgba(10,15,26,.45)]"
+            className="w-full max-w-xl overflow-hidden rounded-2xl border border-[color:var(--line-strong)] bg-surface shadow-[0_32px_80px_-20px_rgba(10,15,26,.45)]"
             initial={{ opacity: 0, y: -12, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
