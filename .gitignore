@@ -1,0 +1,24 @@
+node_modules/
+dist/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# Secrets: only the documented examples are committed
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+*.log
+
+# Local runtime data (uploaded identity documents, development email outbox)
+apps/api/uploads/*
+!apps/api/uploads/.gitkeep
+apps/api/outbox/*
+!apps/api/outbox/.gitkeep
+
+.DS_Store
+Thumbs.db

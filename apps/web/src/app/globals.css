@@ -1,0 +1,153 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Design system — "Calm depth"
+   Marketing & auth: midnight canvas, expressive motion, a single 3D focal point.
+   Product: a quiet light canvas, crisp surfaces, motion only where it explains
+   a change of state. Everything honours prefers-reduced-motion.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  color-scheme: light;
+  --canvas: #f6f7f9;
+  --surface: #ffffff;
+  --line: rgba(21, 28, 39, 0.08);
+  --line-strong: rgba(21, 28, 39, 0.14);
+  --ring: rgba(31, 163, 136, 0.35);
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  @apply bg-[var(--canvas)] font-sans text-[14px] text-ink-900 antialiased;
+  font-feature-settings: 'ss01', 'cv11';
+}
+
+::selection {
+  background: rgba(65, 191, 162, 0.25);
+}
+
+/* Soft, slow light behind content (product: very low intensity). */
+.aurora {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.aurora > span {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  opacity: 0.45;
+  will-change: transform;
+}
+
+/* Subtle dot texture for product canvas. */
+.canvas-dots {
+  background-image: radial-gradient(rgba(21, 28, 39, 0.07) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+@layer components {
+  /* Product surface: solid, crisp, readable. */
+  .card {
+    @apply relative rounded-2xl border border-[color:var(--line)] bg-white shadow-card transition-shadow duration-300;
+  }
+  .card-hover {
+    @apply hover:border-[color:var(--line-strong)] hover:shadow-depth;
+  }
+  .glass-dark {
+    @apply rounded-2xl border border-white/10 bg-white/[0.04] shadow-2xl backdrop-blur-2xl;
+  }
+
+  .btn {
+    @apply relative inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-[10px] px-3.5 py-2 text-[13px] font-medium transition-all duration-200 focus:outline-none focus-visible:ring-4 focus-visible:ring-[color:var(--ring)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100;
+  }
+  .btn-primary {
+    @apply btn bg-ink-900 text-white shadow-[0_1px_0_rgba(255,255,255,.12)_inset,0_1px_2px_rgba(21,28,39,.3),0_6px_16px_-6px_rgba(21,28,39,.5)] hover:bg-ink-800;
+  }
+  .btn-brand {
+    @apply btn bg-gradient-to-b from-brand-500 to-brand-700 text-white shadow-btn hover:from-brand-400 hover:to-brand-600;
+  }
+  .btn-secondary {
+    @apply btn border border-[color:var(--line-strong)] bg-white text-ink-800 shadow-[0_1px_2px_rgba(21,28,39,.05)] hover:bg-ink-50;
+  }
+  .btn-ghost {
+    @apply btn text-ink-600 hover:bg-ink-900/[0.05] hover:text-ink-900;
+  }
+  .btn-danger {
+    @apply btn border border-red-200 bg-white text-red-700 hover:bg-red-50;
+  }
+
+  .input {
+    @apply block w-full rounded-[10px] border border-[color:var(--line-strong)] bg-white px-3 py-2 text-[13.5px] text-ink-900 shadow-[0_1px_2px_rgba(21,28,39,.04)] transition placeholder:text-ink-400 hover:border-ink-300 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/15;
+  }
+  .label {
+    @apply mb-1.5 block text-[13px] font-medium text-ink-700;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full border border-[color:var(--line-strong)] bg-white px-2.5 py-1 text-xs font-medium text-ink-700 transition hover:border-ink-300 hover:bg-ink-50;
+  }
+  .chip-active {
+    @apply border-brand-500 bg-brand-50 text-brand-800 shadow-[0_0_0_3px_rgba(31,163,136,.12)];
+  }
+  .kbd {
+    @apply inline-flex h-5 min-w-[20px] items-center justify-center rounded-md border border-[color:var(--line-strong)] bg-white px-1 font-sans text-[10.5px] font-semibold text-ink-500 shadow-[0_1px_0_rgba(21,28,39,.08)];
+  }
+
+  .h1 {
+    @apply text-[26px] font-semibold leading-tight tracking-[-0.03em] text-ink-900 sm:text-[30px];
+  }
+  .h2 {
+    @apply text-[15px] font-semibold tracking-[-0.01em] text-ink-900;
+  }
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-500;
+  }
+  .muted {
+    @apply text-[13px] text-ink-500;
+  }
+  .text-gradient {
+    @apply bg-gradient-to-r from-brand-300 via-white to-iris-300 bg-[length:200%_auto] bg-clip-text text-transparent animate-gradient-shift;
+  }
+  .skeleton {
+    @apply rounded-lg bg-[linear-gradient(90deg,#eceff3_0%,#f6f7f9_40%,#eceff3_80%)] bg-[length:200%_100%] animate-shimmer;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Brand mark loader: strokes draw in and out, the mentor node breathes.
+   Under reduced motion the animation runs once, instantly, and rests fully drawn. */
+.logo-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: logo-draw 1.5s cubic-bezier(0.65, 0, 0.35, 1) infinite alternate both;
+}
+@keyframes logo-draw {
+  0% { stroke-dashoffset: 1; }
+  60%, 100% { stroke-dashoffset: 0; }
+}
+.logo-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: logo-pulse 1.5s ease-in-out infinite alternate both;
+}
+@keyframes logo-pulse {
+  0% { transform: scale(0.7); opacity: 0.6; }
+  100% { transform: scale(1); opacity: 1; }
+}

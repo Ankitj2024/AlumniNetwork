@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+  <!-- Alumni Mentor Network mark. Keep in sync with src/components/Logo.tsx (MARK). -->
+  <defs>
+    <linearGradient id="bg" x1="6" y1="2" x2="42" y2="48" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#41bfa2"/>
+      <stop offset="0.5" stop-color="#1fa388"/>
+      <stop offset="1" stop-color="#7563f5"/>
+    </linearGradient>
+    <linearGradient id="gloss" x1="24" y1="0" x2="24" y2="28" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="gap" maskUnits="userSpaceOnUse" x="0" y="0" width="48" height="48">
+      <rect width="48" height="48" fill="#fff"/>
+      <circle cx="24" cy="13.4" r="7.6" fill="#000"/>
+    </mask>
+  </defs>
+  <rect width="48" height="48" rx="13" fill="url(#bg)"/>
+  <rect width="48" height="48" rx="13" fill="url(#gloss)"/>
+  <g mask="url(#gap)" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M13 37A30 30 0 0 1 24 16A30 30 0 0 1 35 37" stroke-width="4.4"/>
+    <path d="M14.4 30.2Q24 25.2 33.6 30.2" stroke-width="3.4"/>
+  </g>
+  <circle cx="24" cy="13.4" r="4.9" fill="#fff"/>
+</svg>

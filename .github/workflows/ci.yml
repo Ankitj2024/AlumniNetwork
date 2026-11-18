@@ -1,0 +1,61 @@
+# Runs on every push and pull request: type-checks both apps, runs the API test suite
+# (including the exhaustive privacy sweep), and builds the website.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # The tests start a throwaway MongoDB; cache its binary between runs.
+      - name: Cache MongoDB binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: mongodb-binaries-${{ runner.os }}-v1
+
+      - name: Type-check API
+        run: npm run typecheck -w apps/api
+
+      - name: Type-check web
+        run: npm run typecheck -w apps/web
+
+      - name: API tests
+        run: npm test -w apps/api
+
+      - name: Build API
+        run: npm run build -w apps/api
+
+      - name: Build web
+        run: npm run build -w apps/web
+        env:
+          NODE_ENV: production
+          NEXT_TELEMETRY_DISABLED: '1'
+
+      - name: Dependency audit (production, high and above)
+        run: npm audit --omit=dev --audit-level=high
+        continue-on-error: true

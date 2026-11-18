@@ -1,0 +1,217 @@
+'use client';
+import { motion } from 'framer-motion';
+import { ArrowRight, CalendarClock, Clock, Compass, Send, Sparkles, UserRound, Video } from 'lucide-react';
+import Link from 'next/link';
+import { MentorCard } from '@/components/MentorCard';
+import { Ring, Stagger, StaggerItem, Tilt } from '@/components/motion';
+import ShinyText from '@/components/reactbits/ShinyText';
+import { Avatar, Card, EmptyState, LinkButton, PageLoader, Stat, StatusBadge, useToast } from '@/components/ui';
+import { post } from '@/lib/api';
+import { fmtDateTime, relTime } from '@/lib/format';
+import { useApi } from '@/lib/hooks';
+import type { Mentor, MentorshipRequest, Mentorship } from '@/lib/types';
+
+/** Profile strength drives match quality, so we show it and nudge towards completing it. */
+function strength(p: any): { pct: number; missing: string[] } {
+  if (!p) return { pct: 0, missing: [] };
+  const checks: [boolean, string][] = [
+    [!!p.goals?.length, 'a career goal'],
+    [!!p.targetRoles?.length, 'target roles'],
+    [!!p.targetIndustries?.length, 'target industries'],
+    [(p.interests?.length ?? 0) >= 3, 'at least 3 interests'],
+    [!!p.mentoringAreasWanted?.length, 'the help you want'],
+    [!!p.department, 'your department'],
+    [!!p.bio, 'a short bio'],
+  ];
+  const done = checks.filter(([ok]) => ok).length;
+  return { pct: Math.round((done / checks.length) * 100), missing: checks.filter(([ok]) => !ok).map(([, l]) => l) };
+}
+
+export default function StudentHome() {
+  const toast = useToast();
+  const profile = useApi<{ profile: any; throttle: any }>('/students/me');
+  const ms = useApi<{ mentorships: Mentorship[] }>('/mentorships');
+  const reqs = useApi<{ requests: MentorshipRequest[] }>('/requests');
+  const matches = useApi<{ mentors: Mentor[] }>('/mentors/search?limit=3');
+
+  if (profile.loading && !profile.data) return <PageLoader />;
+  const p = profile.data?.profile;
+  const t = profile.data?.throttle;
+  const first = p?.name?.split(' ')[0] ?? 'there';
+  const active = (ms.data?.mentorships ?? []).filter((m) => m.status === 'active');
+  const pendingReqs = (reqs.data?.requests ?? []).filter((r) => r.status === 'pending');
+  const recent = (reqs.data?.requests ?? []).slice(0, 5);
+  const { pct, missing } = strength(p);
+  const nextSession = active.filter((m) => m.nextSessionAt).sort((a, b) => +new Date(a.nextSessionAt!) - +new Date(b.nextSessionAt!))[0];
+
+  // The single most useful thing to do next.
+  const hero =
+    pct < 60
+      ? { kicker: 'Next step', title: 'Finish your career profile', body: `Mentors are matched on your goals. Add ${missing.slice(0, 2).join(' and ')} to unlock better matches.`, cta: 'Complete profile', href: '/student/profile', icon: UserRound }
+      : nextSession
+        ? { kicker: 'Coming up', title: `Session with ${nextSession.mentor.name.split(' ')[0]} ${relTime(nextSession.nextSessionAt)}`, body: `${fmtDateTime(nextSession.nextSessionAt)} — the video link and calendar file are on the session page.`, cta: 'Open session', href: `/mentorships/${nextSession.id}?tab=sessions`, icon: Video }
+        : active.length
+          ? { kicker: 'Keep momentum', title: `Book your next session with ${active[0].mentor.name.split(' ')[0]}`, body: 'Mentorships that meet every 2–3 weeks are the ones that last. Propose a couple of times that suit you.', cta: 'Propose times', href: `/mentorships/${active[0].id}?tab=sessions`, icon: CalendarClock }
+          : pendingReqs.length
+            ? { kicker: 'Waiting on a reply', title: `${pendingReqs.length} request${pendingReqs.length > 1 ? 's' : ''} with mentors`, body: 'Mentors have a week to reply. Meanwhile, explore other strong matches.', cta: 'See matches', href: '/mentors', icon: Clock }
+            : { kicker: 'Next step', title: 'Find your first mentor', body: 'We’ve ranked verified alumni by how well they fit your goals — with the reasons why.', cta: 'See my matches', href: '/mentors', icon: Compass };
+
+  async function withdraw(id: string) {
+    try {
+      await post(`/requests/${id}/withdraw`);
+      toast('Request withdrawn — your slot is free again.');
+      reqs.reload();
+      profile.reload();
+    } catch (e: any) {
+      toast(e.message, 'err');
+    }
+  }
+
+  const HeroIcon = hero.icon;
+  return (
+    <>
+      <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
+        <p className="eyebrow mb-1.5">{new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+        <h1 className="h1">
+          Good to see you, <span className="bg-gradient-to-r from-brand-600 to-iris-500 bg-clip-text text-transparent">{first}</span>
+        </h1>
+      </motion.div>
+
+      {/* hero: next best action */}
+      <Tilt max={3} glare className="mb-6 rounded-3xl">
+        <div className="relative overflow-hidden rounded-3xl bg-ink-950 p-6 text-white shadow-depth sm:p-8">
+          <div aria-hidden className="absolute -right-16 -top-24 h-72 w-72 animate-aurora rounded-full bg-brand-500/40 blur-3xl" />
+          <div aria-hidden className="absolute -bottom-24 right-24 h-64 w-64 animate-aurora-slow rounded-full bg-iris-500/40 blur-3xl" />
+          <div aria-hidden className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,.07)_1px,transparent_1px)] [background-size:20px_20px]" />
+          <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="max-w-xl" style={{ transform: 'translateZ(30px)' }}>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-3 py-1 backdrop-blur">
+                <HeroIcon size={13} className="text-brand-300" />
+                <ShinyText text={hero.kicker} color="#a6f0d9" shineColor="#ffffff" speed={2.6} className="text-[11px] font-semibold uppercase tracking-[0.12em]" />
+              </div>
+              <h2 className="text-[22px] font-semibold leading-tight tracking-[-0.02em] sm:text-[26px]">{hero.title}</h2>
+              <p className="mt-2 text-[14px] text-white/70">{hero.body}</p>
+              <Link href={hero.href} className="btn mt-5 bg-white px-4 py-2.5 text-ink-900 shadow-lg hover:bg-brand-50">
+                {hero.cta} <ArrowRight size={15} />
+              </Link>
+            </div>
+            <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.05] p-4 backdrop-blur" style={{ transform: 'translateZ(50px)' }}>
+              <div className="rounded-full bg-white p-1">
+                <Ring value={pct} label="profile" size={64} />
+              </div>
+              <div className="text-[13px]">
+                <div className="font-semibold">Profile strength</div>
+                <div className="text-white/60">{pct === 100 ? 'Complete — great matches ahead' : `${missing.length} thing${missing.length === 1 ? '' : 's'} to add`}</div>
+                {pct < 100 && (
+                  <Link href="/student/profile" className="mt-1 inline-flex items-center gap-1 text-brand-300 hover:text-brand-200">
+                    Improve <ArrowRight size={12} />
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </Tilt>
+
+      {t && (
+        <Stagger className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StaggerItem>
+            <Stat label="Active mentorships" value={`${t.activeMentorships}`} hint={`of ${t.maxActiveMentorships} allowed`} tone="good" />
+          </StaggerItem>
+          <StaggerItem>
+            <Stat label="Awaiting reply" value={`${t.pending}`} hint={`of ${t.maxPending} at a time`} tone={t.pending >= t.maxPending ? 'warn' : undefined} />
+          </StaggerItem>
+          <StaggerItem>
+            <Stat label="Requests left" value={`${Math.max(0, t.maxPerPeriod - t.inPeriod)}`} hint={`this ${t.periodDays}-day window`} tone={t.inPeriod >= t.maxPerPeriod ? 'warn' : undefined} />
+          </StaggerItem>
+          <StaggerItem>
+            <Stat label="Top match" value={matches.data?.mentors[0]?.match ? `${matches.data.mentors[0].match.score}` : '—'} hint={matches.data?.mentors[0]?.name ?? 'Complete your profile'} />
+          </StaggerItem>
+        </Stagger>
+      )}
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <Card title="Your mentorships" actions={<Link href="/mentorships" className="text-[13px] font-medium text-brand-700">View all</Link>}>
+            {active.length === 0 ? (
+              <EmptyState title="No active mentorship yet" body="Send a thoughtful request to one of your top matches." action={<LinkButton href="/mentors" variant="primary">Find a mentor</LinkButton>} />
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {active.map((m) => (
+                  <Link key={m.id} href={`/mentorships/${m.id}`} className="group rounded-2xl border border-[color:var(--line)] p-4 transition hover:-translate-y-0.5 hover:border-[color:var(--line-strong)] hover:shadow-card">
+                    <div className="flex items-center gap-3">
+                      <Avatar name={m.mentor.name} />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[14px] font-semibold">{m.mentor.name}</div>
+                        <div className="truncate text-[12px] text-ink-500">{m.mentor.headline}</div>
+                      </div>
+                      <ArrowRight size={16} className="text-ink-300 transition group-hover:translate-x-0.5 group-hover:text-ink-600" />
+                    </div>
+                    <div className="mt-3 flex items-center justify-between rounded-xl bg-ink-50 px-3 py-2 text-[12px]">
+                      <span className="flex items-center gap-1.5 text-ink-600">
+                        <CalendarClock size={13} /> {m.nextSessionAt ? fmtDateTime(m.nextSessionAt) : 'No session booked'}
+                      </span>
+                      <StatusBadge status={m.health} />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          <Card title="Requests" actions={<span className="text-[12px] text-ink-400">Latest 5</span>}>
+            {recent.length === 0 ? (
+              <p className="muted">No requests yet.</p>
+            ) : (
+              <ol className="relative space-y-4 border-l border-[color:var(--line-strong)] pl-5">
+                {recent.map((r) => (
+                  <li key={r.id} className="relative">
+                    <span className={`absolute -left-[26px] top-1 h-3 w-3 rounded-full ring-4 ring-white ${r.status === 'accepted' ? 'bg-brand-500' : r.status === 'pending' ? 'bg-amber-400' : 'bg-ink-300'}`} />
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[13.5px] font-medium">{r.mentor?.name}</span>
+                          <StatusBadge status={r.status} />
+                        </div>
+                        <p className="text-[12px] text-ink-500">
+                          <Send size={11} className="mr-1 inline" />
+                          Sent {relTime(r.createdAt)}
+                          {r.status === 'pending' && ` · expires ${relTime(r.expiresAt)}`}
+                          {r.status === 'declined' && r.declineNote && ` · “${r.declineNote}”`}
+                        </p>
+                      </div>
+                      {r.status === 'pending' && (
+                        <button className="btn-ghost px-2 py-1 text-[12px]" onClick={() => withdraw(r.id)}>
+                          Withdraw
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </Card>
+        </div>
+
+        <div>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="h2 flex items-center gap-1.5">
+              <Sparkles size={15} className="text-brand-600" /> Top matches
+            </h2>
+            <Link href="/mentors" className="text-[13px] font-medium text-brand-700">
+              See all
+            </Link>
+          </div>
+          <Stagger className="space-y-3">
+            {(matches.data?.mentors ?? []).map((m, i) => (
+              <StaggerItem key={m.id}>
+                <MentorCard m={m} topMatch={i === 0 && (m.match?.score ?? 0) >= 60} />
+              </StaggerItem>
+            ))}
+          </Stagger>
+          {matches.data && matches.data.mentors.length === 0 && <p className="muted">No mentors with open capacity match yet.</p>}
+        </div>
+      </div>
+    </>
+  );
+}
