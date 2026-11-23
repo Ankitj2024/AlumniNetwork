@@ -54,6 +54,8 @@ npm run seed
 
 All demo accounts use the password **`Demo@1234`** (defined in `apps/api/src/seed/data.ts`).
 
+The sign-in page has a **Try a demo account** panel: tap a role and its email and password are filled in, then press **Sign in**. The panel shows in development only; a production build hides it unless `NEXT_PUBLIC_DEMO_LOGINS=true` is set for a hosted demo that was seeded on purpose.
+
 | Email | Role | Try this |
 |-------|------|----------|
 | `student@demo.edu` | Student (Aarav Sharma) | Dashboard → **Find a mentor** (ranked matches with reasons, facets, capacity) → open a mentor → **Request mentorship**. Open your mentorship → **Messages** and type an email address: it is hidden. |
