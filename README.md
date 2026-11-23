@@ -238,7 +238,7 @@ docs/    PRIVACY.md (field-by-field statement), API.md
 npm test
 ```
 
-The suite has 98 tests in 9 files. Each file runs against its own throw-away in-memory MongoDB. CI (`.github/workflows/ci.yml`) runs the type checks, these tests and both production builds on every push and pull request.
+The suite has 99 tests in 9 files. Each file runs against its own throw-away in-memory MongoDB. CI (`.github/workflows/ci.yml`) runs the type checks, these tests and both production builds on every push and pull request.
 
 | Spec requirement | Test file | What it proves |
 |------------------|-----------|----------------|

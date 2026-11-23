@@ -40,6 +40,19 @@ describe('matching engine', () => {
     void paused;
   });
 
+  it('finds mentors by name (partial, any case) without ever listing unverified alumni', async () => {
+    const s = await makeStudent({ name: 'Rhea Student' }); // a student with the same name is never a result
+    await makeMentor({ name: 'Rhea Kapoor', role: 'Credit Analyst', industry: 'FinTech' });
+    await makeMentor({ name: 'Arjun Mehta', role: 'Platform Engineer' });
+    const pending = await makeMentor({ name: 'Rhea Pending' });
+    await Alumnus.updateOne({ _id: pending.alumnus._id }, { verificationStatus: 'pending' });
+    const names = async (q: string) => (await searchMentors({ q, hasCapacity: false }, String(s.profile._id))).rows.map((r) => (r.alumnus.user as any).name);
+    expect(await names('rhea')).toEqual(['Rhea Kapoor']);
+    expect(await names('KAPOOR')).toEqual(['Rhea Kapoor']);
+    expect(await names('engineer')).toEqual(['Arjun Mehta']); // role search still works
+    expect(await names('rhea.*')).toEqual([]); // typed regex characters are literal
+  });
+
   it('admin-configured weights change the ranking', async () => {
     const s = await makeStudent({ tags: ['Python'], roles: ['Data Scientist'], industries: ['FinTech'] });
     await makeMentor({ name: 'Industry match', tags: ['Go'], role: 'Accountant', industry: 'FinTech' });

@@ -85,7 +85,7 @@ export default function DiscoverPage() {
         <div className="flex flex-col gap-2.5 sm:flex-row">
           <div className="relative flex-1 sm:max-w-lg">
             <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
-            <input className="input h-11 pl-10 pr-10 text-[14px]" placeholder="Search by role, company or industry" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search mentors" />
+            <input className="input h-11 pl-10 pr-10 text-[14px]" placeholder="Search by name, role, company or industry" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search mentors" />
             {q && (
               <button className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-ink-400 hover:bg-ink-100" onClick={() => setQ('')} aria-label="Clear search">
                 <X size={14} />

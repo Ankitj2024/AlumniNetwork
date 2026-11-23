@@ -9,6 +9,7 @@ import {
   Mentorship,
   MentorshipRequest,
   StudentProfile,
+  User,
 } from '../models/index.js';
 import { isAccepting } from './capacity.js';
 import { getSettings, type ProgrammeSettings } from './settings.js';
@@ -155,7 +156,9 @@ export async function searchMentors(filters: SearchFilters, studentProfileId?: s
   const base: Record<string, any> = { verificationStatus: 'verified', mentorOptIn: true };
   if (filters.q) {
     const re = new RegExp(escapeRe(filters.q.trim()), 'i');
-    base.$or = [{ headline: re }, { currentRole: re }, { currentCompany: re }, { industry: re }, { bio: re }];
+    // Names live on the user record: match alumni users by name, then include their profiles.
+    const named = await User.find({ role: 'alumnus', name: re }).select('_id').lean();
+    base.$or = [{ user: { $in: named.map((u) => u._id) } }, { headline: re }, { currentRole: re }, { currentCompany: re }, { industry: re }, { bio: re }];
   }
   const all = await Alumnus.find(base).populate('user', 'name').populate('expertise').lean();
 
