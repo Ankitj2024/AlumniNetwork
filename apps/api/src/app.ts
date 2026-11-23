@@ -16,6 +16,7 @@ import mentorshipRoutes from './routes/mentorships.js';
 import messageRoutes from './routes/messages.js';
 import metaRoutes from './routes/meta.js';
 import notificationRoutes from './routes/notifications.js';
+import paymentRoutes from './routes/payments.js';
 import requestRoutes from './routes/requests.js';
 import studentRoutes from './routes/students.js';
 
@@ -25,7 +26,15 @@ export function createApp() {
   app.set('trust proxy', 1);
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'same-site' } }));
   app.use(cors({ origin: env.webOrigin, credentials: true }));
-  app.use(express.json({ limit: '6mb' }));
+  app.use(
+    express.json({
+      limit: '6mb',
+      // Payment webhooks are signed over the exact bytes received, so keep them for verification.
+      verify: (req, _res, buf) => {
+        if (req.url?.startsWith('/api/payments/webhook')) (req as typeof req & { rawBody?: Buffer }).rawBody = Buffer.from(buf);
+      },
+    }),
+  );
   app.use(cookieParser());
   app.use(attachViewer);
   app.use(enforceStaffMfa);
@@ -46,6 +55,7 @@ export function createApp() {
   api.use('/messages', messageRoutes);
   api.use('/notifications', notificationRoutes);
   api.use('/calendar', calendarRoutes);
+  api.use('/payments', paymentRoutes);
   api.use('/admin', adminRoutes);
   api.use('/analytics', analyticsRoutes);
   app.use('/api', api);

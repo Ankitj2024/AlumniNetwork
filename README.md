@@ -58,12 +58,12 @@ The sign-in page has a **Try a demo account** panel: tap a role and its email an
 
 | Email | Role | Try this |
 |-------|------|----------|
-| `student@demo.edu` | Student (Aarav Sharma) | Dashboard → **Find a mentor** (ranked matches with reasons, facets, capacity) → open a mentor → **Request mentorship**. Open your mentorship → **Messages** and type an email address: it is hidden. |
-| `mentor@demo.edu` | Verified alumni mentor (Priya Nair) | 3 pending requests, 1 open slot. **Accept** one → you're now full and Accept is disabled. **Decline** with an optional reason, or **Decline all**. **Pause** new requests. |
+| `student@demo.edu` | Student (Aarav Sharma) | Dashboard → **Find a mentor** (ranked matches with reasons, facets, capacity, fee) → open a mentor → **Request mentorship**. Open your mentorship → **Messages** and type an email address: it is hidden. **Payments** shows three saved cards in a wallet and the payment history; pick a time on a session Priya proposes to pay ₹499 through the test gateway. |
+| `mentor@demo.edu` | Verified alumni mentor (Priya Nair) | 3 pending requests, 1 open slot. **Accept** one → you're now full and Accept is disabled. **Decline** with an optional reason, or **Decline all**. **Pause** new requests. Charges ₹499 per session: **Earnings** shows what students paid and her share; **Profile → Session fee** changes it. |
 | `newalumni@demo.edu` | Registered, unverified alumna | **Profile & verification** → submit roll number `2018CS901`, name *Rhea Kapoor*, year 2018, B.Tech, Computer Science & Engineering, DOB 1996-04-12 → exact record match. |
 | `aro@demo.edu` | Alumni Relations Officer | **Verification queue** (approve Rhea, compare fields, open documents), **Engagement health** (nudge), **Mentor capacity** (overload warnings), **Programme report**. |
 | `placement@demo.edu` | Placement Officer | Read-only programme report incl. mentoring ↔ placement correlation. |
-| `admin@demo.edu` | Administrator | **Programme settings**: matching weights, throttle limits, request expiry, engagement thresholds. Users, audit log. |
+| `admin@demo.edu` | Administrator | **Programme settings**: matching weights, throttle limits, request expiry, engagement thresholds, paid sessions (on/off, platform fee, fee cap, refund cutoff). **Payments**: every payment, with refunds. Users, audit log. |
 
 Seed contents: **60 verified alumni** (each matched to an institutional record with an approval audit trail), 6 pending verifications (some with mismatches), 46 students, 26 mentorships with ~5 months of sessions, goals, action items, messages, feedback and weekly engagement snapshots, 45 requests in every state, and placement outcomes.
 
@@ -151,6 +151,20 @@ How Google sign-in behaves:
 
 Staff open **Institution records → Import CSV** with the columns `rollNumber,fullName,graduationYear,degree,department[,dateOfBirth]`. Existing roll numbers are updated. For a live ERP sync, call `POST /api/alumni/records/import` from a scheduled job with a staff token.
 
+### 4.7 Paid sessions (Razorpay)
+
+Mentors can charge a fee per session (Profile → Session fee; 0 = free). When a time is picked for a paid session, the slot is **held for 30 minutes** and the student pays; once paid, the session is confirmed with its video link. Unpaid holds are released by a background job.
+
+- **Development** uses a built-in **test gateway** (`PAYMENT_GATEWAY=test`, the default): no money moves. Test cards: `4242 4242 4242 4242` pays, `4000 0000 0000 0002` is declined; UPI `success@razorpay` pays, `failure@razorpay` is declined.
+- **Production** with Razorpay:
+  1. Create API keys in the Razorpay Dashboard (Settings → API Keys) and set `PAYMENT_GATEWAY=razorpay`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`.
+  2. Add a webhook (Settings → Webhooks) pointing at `https://<your API>/api/payments/webhook/razorpay` with the events `payment.captured`, `order.paid`, `payment.failed` and `refund.processed`, and set its secret as `RAZORPAY_WEBHOOK_SECRET`. The webhook confirms payments even if the student closes the browser mid-checkout.
+  3. Turn on saved cards (tokenisation) for your account if you want "Save this card".
+- **Card numbers never reach the platform.** Students pay in Razorpay Checkout; the API keeps only Razorpay's token, the network, last four digits and expiry, and refuses any request containing a card number.
+- **Refunds:** a mentor (or staff) cancelling refunds the student in full; a student cancelling is refunded only up to the cutoff before the session (24 hours by default). Admin and Alumni Relations can refund any payment from **Payments**.
+- **Payouts to mentors are not automated.** Each payment records the platform fee and the mentor's share; paying mentors out automatically needs Razorpay Route (linked accounts with KYC) and TDS handling.
+- `PAYMENT_GATEWAY=off` (the production default) ignores fees, so every session is free.
+
 ## Accounts & security
 
 | Feature | How it works |
@@ -224,7 +238,7 @@ docs/    PRIVACY.md (field-by-field statement), API.md
 npm test
 ```
 
-The suite has 86 tests in 8 files. Each file runs against its own throw-away in-memory MongoDB. CI (`.github/workflows/ci.yml`) runs the type checks, these tests and both production builds on every push and pull request.
+The suite has 98 tests in 9 files. Each file runs against its own throw-away in-memory MongoDB. CI (`.github/workflows/ci.yml`) runs the type checks, these tests and both production builds on every push and pull request.
 
 | Spec requirement | Test file | What it proves |
 |------------------|-----------|----------------|
@@ -235,6 +249,7 @@ The suite has 86 tests in 8 files. Each file runs against its own throw-away in-
 | Google sign-in | `tests/google.test.ts` | New account, linking an existing account, unverified email rejected, forged state/nonce rejected, wrong audience rejected, suspended accounts blocked, open-redirect-safe `next`. With two-factor on, Google alone gives no session: the redirect asks for a code, which completes with only the challenge cookie. Linking Google to an address that was registered but never confirmed removes the earlier password and ends its sessions (protects against someone pre-registering another person's email); confirmed accounts keep their password. |
 | Password reset, email confirmation, two-factor sign-in, first admin | `tests/account.test.ts` | RFC 6238 test vectors; reset links are one-time, expire and are only stored hashed; reset signs out every session; unknown emails get the same answer; confirmation gate on requests; two-factor sign-in needs a fresh code (replays refused), recovery codes work once, 5 wrong codes lock it, the challenge can't be used as a session; staff gate; bootstrap is safe to re-run and its invite link works. |
 | Document storage, upload checks, production config | `tests/storage.test.ts` | Files are identified by content (an HTML file named `.pdf` is refused); local storage refuses paths outside its folder and never overwrites; S3 writes are private with server-side encryption; staff-only streaming with `no-store`; oversized uploads give a clear 400; unsafe production settings are refused and a complete set is accepted. |
+| Paid sessions | `tests/payments.test.ts` | Free mentors book straight away; a paid slot is held, paid and confirmed; the student sees how they paid and the mentor sees only their share; a declined card keeps the hold and a retry works; only the student can pay; unpaid holds are released; refund rules (mentor cancels, student late, student early, staff refund); card numbers and CVVs are refused; the fee cap and the on/off switch; Razorpay signature checks; a full Razorpay checkout against a stand-in Razorpay (order → signature → capture → saved card), an idempotent webhook, a retry after a failed card on the same order, and money that arrives after the hold lapsed (recorded, then refunded). |
 | Matching, verification, engagement, sessions, analytics | `tests/domain.test.ts` | Ranking + reasons + capacity filter, weight changes, record matching + audit trail, decay → nudge → cooldown → recovery, propose/book/ICS/complete, mentor double-booking prevented, private notes hidden, role access. |
 
 ## 8. Deployment
@@ -263,7 +278,8 @@ This is a production setup: put the values it asks for (`JWT_SECRET`, `DATA_ENCR
 4. **Documents:** a **private** bucket (Cloudflare R2 or AWS S3, public access blocked) and a key limited to that bucket. Set `STORAGE_DRIVER=s3` and the `S3_*` values.
 5. **Hosting:** the API on a server that stays running (Render, Railway, Fly.io, AWS…), because Socket.IO and the scheduled jobs need it, plus the web app (Vercel or the same host). HTTPS on one domain, with `COOKIE_SECURE=true`.
 6. **Start it:** the API checks its settings and lists anything missing. Run the bootstrap command to create the first admin, sign in, turn on two-factor sign-in, and import the alumni register (Admin → Records).
-7. **Staging first:** run a separate copy (its own database and bucket) to try changes before they reach real users.
+7. **Payments (if mentors charge):** Razorpay live keys and the webhook (section 4.7). The API refuses to start with the test gateway in production.
+8. **Staging first:** run a separate copy (its own database and bucket) to try changes before they reach real users.
 
 
 ## UI design system & credits
@@ -323,6 +339,7 @@ Stated plainly so nothing is assumed to work that hasn't been exercised:
 - **Docker:** `docker-compose.yml` and both Dockerfiles were written but **not built or run** (Docker Desktop was not running on the development machine). Note that the web image bakes `API_URL` (rewrite target) and `NEXT_PUBLIC_SOCKET_URL` in at **build** time, so pass them as build args when they differ from the defaults.
 - Reminder times in notifications are formatted in UTC. The web UI shows local times.
 - **Two-factor lockout:** someone who loses both their phone and their recovery codes cannot get back in by themselves, and there is no admin "reset two-factor" button yet. Until there is, an operator can switch it off in the database (`mfaEnabled: false` on the user, and remove the `mfa*` fields).
+- **Razorpay** is covered by tests against a stand-in Razorpay (orders, signature checks, capture, saved-card tokens, refunds, webhooks), but was **not tried against the real Razorpay API** (no keys were available). The test gateway is exercised end to end in the browser.
 - **S3 / R2 storage** is covered by tests with a stand-in client, but was **not tried against a real bucket** (no credentials were available). The local disk driver is tested end to end.
 - **CI workflow** (`.github/workflows/ci.yml`) runs the same commands that pass locally, but it has **not run on GitHub yet**: the project has no GitHub repository so far.
 - **Staging deployment and a hosted database** need your accounts (hosting, MongoDB Atlas, email provider, bucket), so they are documented in the go-live checklist but not set up.

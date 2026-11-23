@@ -16,7 +16,7 @@ import { app, api, auth, startDb, stopDb } from './helpers.js';
 import { attachSocket } from '../src/socket.js';
 import { setIo } from '../src/lib/realtime.js';
 import { runSeed } from '../src/seed/seed.js';
-import { Alumnus, CareerGoal, Mentorship, MentorshipRequest, Session, StudentProfile, User, VerificationRequest, Goal, ActionItem } from '../src/models/index.js';
+import { Alumnus, CareerGoal, Mentorship, MentorshipRequest, Payment, PaymentMethod, Session, StudentProfile, User, VerificationRequest, Goal, ActionItem } from '../src/models/index.js';
 import { findPrivacyViolations } from '../src/serializers/index.js';
 import { maskContactDetails } from '../src/lib/mask.js';
 
@@ -71,6 +71,8 @@ function assertNoSecrets(label: string, body: unknown, list = secrets) {
 function fill(path: string): string {
   return path
     .replace('/students/me/goals/:id', `/students/me/goals/${ids.careerGoal}`)
+    .replace('/payments/methods/:id', `/payments/methods/${ids.paymentMethod}`)
+    .replace('/payments/:id', `/payments/${ids.payment}`)
     .replace('/mentors/:id', `/mentors/${ids.mentor}`)
     .replace('/mentorships/:id', `/mentorships/${ids.mentorship}`)
     .replace(':sid', ids.session)
@@ -115,6 +117,8 @@ beforeAll(async () => {
   const vr = await VerificationRequest.findOne({ status: 'pending' }).lean();
   const anyMentor = await Alumnus.findOne({ verificationStatus: 'verified' }).lean();
   const cg = await CareerGoal.findOne({ student: sp!._id }).lean();
+  const pay = await Payment.findOne({ payer: student._id, status: 'paid' }).lean();
+  const pm = await PaymentMethod.findOne({ user: student._id }).lean();
   ids = {
     careerGoal: String(cg!._id),
     mentorship: String(m!._id),
@@ -127,6 +131,8 @@ beforeAll(async () => {
     mentor: String(m!.alumnus),
     anyMentor: String(anyMentor!._id),
     mentorUser: String(mentorUser._id),
+    payment: String(pay!._id),
+    paymentMethod: String(pm!._id),
   };
   QUERY['/api/messages'] = `?mentorshipId=${ids.mentorship}`;
 }, 240_000);
@@ -155,7 +161,7 @@ describe('privacy: alumni contact details never reach a student', () => {
       if (res.type?.includes('text')) assertNoSecrets(`GET ${r.path} (text)`, res.text);
     }
     // The student-facing data endpoints really returned data (guards against vacuous passes).
-    for (const must of ['/api/mentors/search', '/api/mentors/:id', '/api/mentorships', '/api/mentorships/:id', '/api/mentorships/:id/sessions', '/api/mentorships/:id/goals', '/api/mentorships/:id/feedback', '/api/messages', '/api/requests', '/api/students/me', '/api/notifications', '/api/auth/me']) {
+    for (const must of ['/api/mentors/search', '/api/mentors/:id', '/api/mentorships', '/api/mentorships/:id', '/api/mentorships/:id/sessions', '/api/mentorships/:id/goals', '/api/mentorships/:id/feedback', '/api/messages', '/api/requests', '/api/students/me', '/api/notifications', '/api/auth/me', '/api/payments', '/api/payments/:id', '/api/payments/methods', '/api/payments/config']) {
       expect(ok200, `${must} should return 200 to a student`).toContain(must);
     }
   });
@@ -193,7 +199,7 @@ describe('privacy: alumni contact details never reach a student', () => {
         res.body.mentors.forEach((m: any) => seen.add(m.id));
         for (const m of res.body.mentors) {
           expect(Object.keys(m).sort()).toEqual(
-            ['availability', 'bio', 'capacity', 'city', 'currentCompany', 'currentRole', 'degree', 'department', 'expertise', 'graduationYear', 'headline', 'id', 'industry', 'languages', 'match', 'mentoringAreas', 'name', 'verified', 'yearsExperience'].filter((k) => k in m).sort(),
+            ['availability', 'bio', 'capacity', 'city', 'currentCompany', 'currentRole', 'degree', 'department', 'expertise', 'graduationYear', 'headline', 'id', 'industry', 'languages', 'match', 'mentoringAreas', 'name', 'sessionFee', 'verified', 'yearsExperience'].filter((k) => k in m).sort(),
           );
           expect(m.match.reasons.length).toBeGreaterThan(0);
         }
@@ -308,7 +314,17 @@ describe('privacy: alumni contact details never reach a student', () => {
     const p1 = await api().post(`/api/mentorships/${ids.mentorship}/sessions`).set(hm).send({ slots: [slot], title: 'Call me on 98765 43210', agenda: 'x' });
     scan('propose (mentor)', p1);
     expect(p1.body.session.title).toContain('[contact hidden]');
-    scan('book', await api().post(`/api/mentorships/${ids.mentorship}/sessions/${p1.body.session.id}/book`).set(hs).send({ slotIndex: 0 }));
+    const booked = await api().post(`/api/mentorships/${ids.mentorship}/sessions/${p1.body.session.id}/book`).set(hs).send({ slotIndex: 0 });
+    scan('book', booked);
+    // the demo mentor charges per session: pay through the test gateway (every response is scanned too)
+    expect(booked.body.session.status).toBe('awaiting_payment');
+    const co = await api().post('/api/payments/checkout').set(hs).send({ sessionId: p1.body.session.id });
+    scan('checkout', co);
+    const paid = await api().post('/api/payments/test/complete').set(hs).send({ paymentId: co.body.checkout.paymentId, method: { type: 'card', network: 'visa', cardType: 'credit', last4: '4242', expMonth: 12, expYear: new Date().getFullYear() + 2, save: true } });
+    scan('pay', paid);
+    expect(paid.body.session.status).toBe('scheduled');
+    scan('payment (mentor view)', await api().get(`/api/payments/${paid.body.payment.id}`).set(hm));
+    scan('earnings (mentor)', await api().get('/api/payments').set(hm));
     await Session.updateOne({ _id: p1.body.session.id }, { scheduledStart: new Date(Date.now() - 3600e3), scheduledEnd: new Date() });
     scan('complete', await api().post(`/api/mentorships/${ids.mentorship}/sessions/${p1.body.session.id}/complete`).set(hs).send({ summary: 'Good' }));
     // cancel

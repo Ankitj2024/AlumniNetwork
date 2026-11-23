@@ -1,10 +1,14 @@
 'use client';
+import { Receipt } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { Checkout } from '@/components/payments/Checkout';
 import { Badge, Card, EmptyState, Field, Modal, Spinner, StatusBadge, cx, useToast } from '@/components/ui';
 import { get, patch, post } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { AREA_LABELS, DAYS, fmtDate, fmtDateTime, minutesToTime, relTime } from '@/lib/format';
 import { useApi } from '@/lib/hooks';
+import { inr, usePaymentConfig } from '@/lib/payments';
 import { getSocket } from '@/lib/socket';
 import type { CareerGoal, Mentorship, SessionT } from '@/lib/types';
 
@@ -74,9 +78,13 @@ export function OverviewTab({ m, careerGoals, stats, onGo }: { m: Mentorship; ca
 }
 
 /* -------------------------------------------------------------- sessions */
-export function SessionsTab({ id, role, active }: { id: string; role: Role; active: boolean }) {
+export function SessionsTab({ id, role, active, mentorFee = 0, otherName = 'the other person' }: { id: string; role: Role; active: boolean; mentorFee?: number; otherName?: string }) {
   const toast = useToast();
   const { me } = useAuth();
+  const pay = usePaymentConfig();
+  const [paying, setPaying] = useState<SessionT | null>(null);
+  const charges = !!pay?.enabled && mentorFee > 0;
+  const feeLabel = inr(Math.min(mentorFee, pay?.maxSessionFee ?? mentorFee) * 100);
   const { data, reload } = useApi<{ sessions: SessionT[] }>(`/mentorships/${id}/sessions`);
   const [proposing, setProposing] = useState(false);
   const [slots, setSlots] = useState<{ date: string; time: string; duration: number }[]>([{ date: '', time: '19:00', duration: 45 }]);
@@ -112,16 +120,33 @@ export function SessionsTab({ id, role, active }: { id: string; role: Role; acti
   }
   async function book(s: SessionT, i: number) {
     try {
-      await post(`/mentorships/${id}/sessions/${s.id}/book`, { slotIndex: i });
-      toast('Session confirmed. Video link and calendar file are ready.');
+      const r = await post<{ session: SessionT }>(`/mentorships/${id}/sessions/${s.id}/book`, { slotIndex: i });
+      if (r.session.status === 'awaiting_payment') {
+        if (role === 'student') setPaying(r.session);
+        else toast(`Time picked. ${otherName} has 30 minutes to pay ${inr(r.session.fee)} to confirm it.`);
+      } else toast('Session confirmed. Video link and calendar file are ready.');
       reload();
     } catch (e: any) {
       toast(e.message, 'err');
     }
   }
   async function cancel(s: SessionT) {
+    // Paid sessions: tell the student up front whether this cancellation is refunded.
+    if (s.paid && role === 'student') {
+      const cutoff = pay?.refundCutoffHours ?? 24;
+      const hours = s.scheduledStart ? (new Date(s.scheduledStart).getTime() - Date.now()) / 3600e3 : 0;
+      const msg = hours >= cutoff ? `You'll get a full refund of ${inr(s.fee)}.` : `It's less than ${cutoff} hours before the session, so the ${inr(s.fee)} won't be refunded.`;
+      if (!window.confirm(`Cancel this session? ${msg}`)) return;
+    }
     const reason = window.prompt('Reason for cancelling (optional)') ?? undefined;
-    await post(`/mentorships/${id}/sessions/${s.id}/cancel`, { reason });
+    try {
+      const r = await post<{ refund: { refunded: boolean; amount: number; status: string } | null }>(`/mentorships/${id}/sessions/${s.id}/cancel`, { reason });
+      if (r.refund?.refunded) toast(`Session cancelled. ${role === 'student' ? 'Your' : `${otherName}'s`} refund of ${inr(r.refund.amount)} is on its way.`);
+      else if (r.refund && !r.refund.refunded && r.refund.status === 'late') toast('Session cancelled. Late cancellations are not refunded.');
+      else toast('Session cancelled.');
+    } catch (e: any) {
+      toast(e.message, 'err');
+    }
     reload();
   }
   async function log(outcome: 'completed' | 'no_show') {
@@ -139,8 +164,8 @@ export function SessionsTab({ id, role, active }: { id: string; role: Role; acti
   }
 
   const sessions = data?.sessions ?? [];
-  const upcoming = sessions.filter((s) => s.status === 'proposed' || s.status === 'scheduled');
-  const past = sessions.filter((s) => !['proposed', 'scheduled'].includes(s.status));
+  const upcoming = sessions.filter((s) => s.status === 'proposed' || s.status === 'awaiting_payment' || s.status === 'scheduled');
+  const past = sessions.filter((s) => !['proposed', 'awaiting_payment', 'scheduled'].includes(s.status));
 
   return (
     <div className="space-y-6">
@@ -159,12 +184,25 @@ export function SessionsTab({ id, role, active }: { id: string; role: Role; acti
                       <span className="font-medium">{s.title}</span>
                       <StatusBadge status={s.status} />
                     </div>
-                    {s.status === 'scheduled' && <span className="text-sm font-medium">{fmtDateTime(s.scheduledStart)}</span>}
+                    {(s.status === 'scheduled' || s.status === 'awaiting_payment') && <span className="text-sm font-medium">{fmtDateTime(s.scheduledStart)}</span>}
                   </div>
                   {s.agenda && <p className="mt-1 text-sm text-ink-600">{s.agenda}</p>}
                   {s.status === 'proposed' && (
                     <div className="mt-3">
                       <p className="mb-2 text-xs text-ink-500">{mine ? 'Waiting for the other person to choose:' : 'Pick a time that works for you:'}</p>
+                      {charges && (
+                        <p className="mb-2 text-xs text-ink-500">
+                          {role === 'student' ? (
+                            <>
+                              Each session costs <span className="font-semibold text-ink-800">{feeLabel}</span>. You pay when a time is picked; the slot is held for 30 minutes.
+                            </>
+                          ) : (
+                            <>
+                              Sessions cost {feeLabel}; {otherName} pays when a time is picked.
+                            </>
+                          )}
+                        </p>
+                      )}
                       <div className="flex flex-wrap gap-2">
                         {s.proposedSlots.map((sl, i) => (
                           <button key={i} className={mine || role === 'staff' ? 'chip' : 'btn-secondary'} disabled={mine || role === 'staff'} onClick={() => book(s, i)}>
@@ -172,6 +210,25 @@ export function SessionsTab({ id, role, active }: { id: string; role: Role; acti
                           </button>
                         ))}
                       </div>
+                    </div>
+                  )}
+                  {s.status === 'awaiting_payment' && (
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-amber-50 px-3.5 py-3 ring-1 ring-inset ring-amber-200">
+                      <p className="text-[13px] text-amber-900">
+                        {role === 'student' ? (
+                          <>
+                            Pay <span className="font-semibold">{inr(s.fee)}</span> to confirm this time.
+                          </>
+                        ) : (
+                          <>Waiting for {otherName} to pay {inr(s.fee)}.</>
+                        )}{' '}
+                        The slot is held until {fmtDateTime(s.paymentDueAt)}.
+                      </p>
+                      {role === 'student' && (
+                        <button className="btn-primary" onClick={() => setPaying(s)}>
+                          Pay {inr(s.fee)}
+                        </button>
+                      )}
                     </div>
                   )}
                   {s.status === 'scheduled' && (
@@ -185,6 +242,14 @@ export function SessionsTab({ id, role, active }: { id: string; role: Role; acti
                         Add to calendar (.ics)
                       </a>
                       {s.calendarSynced && <Badge tone="green">In your calendar</Badge>}
+                      {s.paid &&
+                        (role === 'student' && s.paymentId ? (
+                          <Link href={`/payments/${s.paymentId}`} className="inline-flex items-center gap-1 self-center text-xs font-medium text-brand-700 hover:underline">
+                            <Receipt size={13} /> Paid {inr(s.fee)}
+                          </Link>
+                        ) : (
+                          <Badge tone="green">Paid {inr(s.fee)}</Badge>
+                        ))}
                       {started && role !== 'staff' && (
                         <button className="btn-secondary" onClick={() => setLogging(s)}>
                           Log session
@@ -219,11 +284,33 @@ export function SessionsTab({ id, role, active }: { id: string; role: Role; acti
                 {s.summary && <p className="mt-1 text-sm text-ink-700">{s.summary}</p>}
                 {s.mentorPrivateNotes && <p className="mt-1 rounded bg-amber-50 px-2 py-1 text-xs text-amber-900">Private note: {s.mentorPrivateNotes}</p>}
                 {s.cancelReason && <p className="mt-1 text-xs text-ink-500">Reason: {s.cancelReason}</p>}
+                {s.paid && s.fee > 0 && (
+                  <p className="mt-1 text-xs text-ink-500">
+                    {role === 'student' && s.paymentId ? (
+                      <Link href={`/payments/${s.paymentId}`} className="font-medium text-brand-700 hover:underline">
+                        Payment {inr(s.fee)}
+                      </Link>
+                    ) : (
+                      `Paid ${inr(s.fee)}`
+                    )}
+                    {s.status === 'cancelled' && ' · see the receipt for the refund'}
+                  </p>
+                )}
               </li>
             ))}
           </ul>
         )}
       </Card>
+
+      <Checkout
+        session={paying}
+        open={!!paying}
+        onClose={() => {
+          setPaying(null);
+          reload();
+        }}
+        onPaid={() => reload()}
+      />
 
       <Modal open={proposing} onClose={() => setProposing(false)} title="Propose session times" footer={<><button className="btn-secondary" onClick={() => setProposing(false)}>Cancel</button><button className="btn-primary" onClick={propose} disabled={busy || !slots.some((s) => s.date)}>{busy && <Spinner />} Send proposal</button></>}>
         <div className="space-y-4">

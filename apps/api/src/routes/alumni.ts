@@ -12,6 +12,7 @@ import { Alumnus, AvailabilityWindow, DEPARTMENTS, InstitutionRecord, MENTORING_
 import { availabilityView, capacityView, mentorSelf, verificationView } from '../serializers/index.js';
 import { audit } from '../services/audit.js';
 import { storage } from '../services/storage.js';
+import { getSettings } from '../services/settings.js';
 import { decideVerification, normalizeName, submitVerification } from '../services/verification.js';
 
 const r = Router();
@@ -73,6 +74,7 @@ const profileSchema = z.object({
   department: z.enum(DEPARTMENTS).optional(),
   degree: z.string().trim().max(60).optional(),
   graduationYear: z.number().int().min(1950).max(2100).optional(),
+  sessionFee: z.number().int().min(0).max(100000).optional(),
 });
 
 r.put(
@@ -80,6 +82,10 @@ r.put(
   requireRole('alumnus'),
   ah(async (req, res) => {
     const b = parse(profileSchema, req.body);
+    if (b.sessionFee) {
+      const max = (await getSettings()).payments?.maxSessionFee ?? 0;
+      if (b.sessionFee > max) throw badRequest('fee_too_high', `The programme allows at most ₹${max} per session`);
+    }
     const a = await Alumnus.findOne({ user: req.viewer!.id });
     if (!a) throw notFound('Alumnus profile');
     // Academic identity is locked once verified against institutional records.

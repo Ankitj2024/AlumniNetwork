@@ -12,7 +12,11 @@ export type ProgrammeSettings = {
   requestExpiryDays: number;
   engagement: { atRiskDays: number; lapsedDays: number; nudgeCooldownDays: number };
   verification: { autoApproveExactMatch: boolean };
+  payments: { enabled: boolean; platformFeePercent: number; maxSessionFee: number; refundCutoffHours: number };
 };
+
+/** Defaults for settings groups added after a database was first created (lean reads skip schema defaults). */
+const PAYMENT_DEFAULTS = { enabled: true, platformFeePercent: 10, maxSessionFee: 5000, refundCutoffHours: 24 };
 
 /** Settings live in the database so administrators can tune them without a deploy. */
 export async function getSettings(): Promise<ProgrammeSettings> {
@@ -21,7 +25,8 @@ export async function getSettings(): Promise<ProgrammeSettings> {
     await Settings.updateOne({ key: 'global' }, { $setOnInsert: { key: 'global' } }, { upsert: true });
     s = await Settings.findOne({ key: 'global' }).lean();
   }
-  return s as unknown as ProgrammeSettings;
+  const out = s as unknown as ProgrammeSettings;
+  return { ...out, payments: { ...PAYMENT_DEFAULTS, ...(out.payments ?? {}) } };
 }
 
 export function settingsView(s: ProgrammeSettings) {
@@ -31,5 +36,6 @@ export function settingsView(s: ProgrammeSettings) {
     requestExpiryDays: s.requestExpiryDays,
     engagement: s.engagement,
     verification: s.verification,
+    payments: s.payments,
   };
 }

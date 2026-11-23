@@ -20,6 +20,9 @@ export type NotificationType =
   | 'feedback_request'
   | 'mentorship_ended'
   | 'capacity_warning'
+  | 'payment_due'
+  | 'payment_received'
+  | 'refund_issued'
   | 'message';
 
 /** Types important enough to also send by SMS when the user has opted in. */

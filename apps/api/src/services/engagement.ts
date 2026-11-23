@@ -42,7 +42,7 @@ export async function runEngagementDecay(clock: Clock = systemClock) {
   for (const m of active) {
     const [sessionsCompleted, upcoming, messages, actionsCompleted, actionsOverdue] = await Promise.all([
       Session.countDocuments({ mentorship: m._id, status: 'completed', completedAt: { $gte: since } }),
-      Session.countDocuments({ mentorship: m._id, status: { $in: ['scheduled', 'proposed'] }, $or: [{ scheduledStart: { $gt: now } }, { status: 'proposed' }] }),
+      Session.countDocuments({ mentorship: m._id, status: { $in: ['scheduled', 'awaiting_payment', 'proposed'] }, $or: [{ scheduledStart: { $gt: now } }, { status: 'proposed' }] }),
       Message.countDocuments({ mentorship: m._id, createdAt: { $gte: since } }),
       ActionItem.countDocuments({ mentorship: m._id, status: 'done', completedAt: { $gte: since } }),
       ActionItem.countDocuments({ mentorship: m._id, status: 'open', dueDate: { $lt: now } }),

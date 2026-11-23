@@ -5,6 +5,7 @@ import { Card, ErrorBox, Field, PageHeader, PageLoader, Spinner, useToast } from
 import { put } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useApi } from '@/lib/hooks';
+import { usePaymentConfig } from '@/lib/payments';
 
 const WEIGHT_LABELS: Record<string, string> = {
   expertise: 'Shared expertise / interests',
@@ -21,6 +22,7 @@ export default function ProgrammeSettings() {
   const { me } = useAuth();
   const { data, loading } = useApi<{ settings: any }>('/admin/settings');
   const [s, setS] = useState<any>(null);
+  const pay = usePaymentConfig();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const readOnly = me?.user.role !== 'admin';
@@ -106,6 +108,28 @@ export default function ProgrammeSettings() {
               </Field>
             </div>
           </Card>
+          <div id="payments" className="scroll-mt-24">
+            <Card title="Paid sessions">
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" className="rounded text-brand-600" checked={s.payments.enabled} onChange={(e) => setS({ ...s, payments: { ...s.payments, enabled: e.target.checked } })} />
+                Mentors may charge a fee per session
+              </label>
+              <div className="mt-4 grid grid-cols-3 gap-3">
+                <Field label="Platform fee %">
+                  <input className="input" type="number" min={0} max={50} value={s.payments.platformFeePercent} onChange={num('payments', 'platformFeePercent')} />
+                </Field>
+                <Field label="Max fee (₹)">
+                  <input className="input" type="number" min={0} value={s.payments.maxSessionFee} onChange={num('payments', 'maxSessionFee')} />
+                </Field>
+                <Field label="Refund cutoff (h)" hint="Student cancels later = no refund">
+                  <input className="input" type="number" min={0} max={168} value={s.payments.refundCutoffHours} onChange={num('payments', 'refundCutoffHours')} />
+                </Field>
+              </div>
+              <p className="mt-3 text-[12.5px] text-ink-500">
+                Gateway: <span className="font-medium text-ink-700">{pay?.gateway === 'razorpay' ? 'Razorpay' : pay?.gateway === 'test' ? 'test gateway (development, no real money)' : 'off (set PAYMENT_GATEWAY on the server)'}</span>. Mentor cancellations are always refunded in full.
+              </p>
+            </Card>
+          </div>
           <Card title="Verification">
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" className="rounded text-brand-600" checked={s.verification.autoApproveExactMatch} onChange={(e) => setS({ ...s, verification: { ...s.verification, autoApproveExactMatch: e.target.checked } })} />

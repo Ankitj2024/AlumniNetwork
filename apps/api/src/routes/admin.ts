@@ -42,6 +42,10 @@ r.put(
         requestExpiryDays: z.number().int().min(1).max(60).optional(),
         engagement: z.object({ atRiskDays: z.number().int().min(3).max(90), lapsedDays: z.number().int().min(7).max(180), nudgeCooldownDays: z.number().int().min(1).max(60) }).partial().optional(),
         verification: z.object({ autoApproveExactMatch: z.boolean() }).partial().optional(),
+        payments: z
+          .object({ enabled: z.boolean(), platformFeePercent: z.number().min(0).max(50), maxSessionFee: z.number().int().min(0).max(100000), refundCutoffHours: z.number().int().min(0).max(168) })
+          .partial()
+          .optional(),
       }),
       req.body,
     );

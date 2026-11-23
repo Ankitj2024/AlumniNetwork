@@ -6,6 +6,7 @@ import { api, put } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { AREA_LABELS, fmtDate, fmtDateTime } from '@/lib/format';
 import { useApi } from '@/lib/hooks';
+import { inr, usePaymentConfig } from '@/lib/payments';
 import { VerificationWizard } from '@/components/VerificationWizard';
 import { ShieldCheck } from 'lucide-react';
 import type { Tag } from '@/lib/types';
@@ -20,11 +21,12 @@ function Inner() {
   const [form, setForm] = useState<any>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const pay = usePaymentConfig();
 
   useEffect(() => {
     if (data?.profile && !form) {
       const p = data.profile;
-      setForm({ headline: p.headline ?? '', currentRole: p.currentRole ?? '', currentCompany: p.currentCompany ?? '', industry: p.industry ?? '', yearsExperience: p.yearsExperience ?? '', city: p.city ?? '', bio: p.bio ?? '', expertise: p.expertise.map((t: Tag) => t.id), mentoringAreas: p.mentoringAreas, languages: (p.languages ?? []).join(', '), linkedinUrl: p.linkedinUrl ?? '', mentorOptIn: p.mentorOptIn });
+      setForm({ headline: p.headline ?? '', currentRole: p.currentRole ?? '', currentCompany: p.currentCompany ?? '', industry: p.industry ?? '', yearsExperience: p.yearsExperience ?? '', city: p.city ?? '', bio: p.bio ?? '', expertise: p.expertise.map((t: Tag) => t.id), mentoringAreas: p.mentoringAreas, languages: (p.languages ?? []).join(', '), linkedinUrl: p.linkedinUrl ?? '', mentorOptIn: p.mentorOptIn, sessionFee: String(p.sessionFee ?? 0) });
     }
   }, [data, form]);
 
@@ -40,6 +42,7 @@ function Inner() {
         yearsExperience: form.yearsExperience === '' ? undefined : Number(form.yearsExperience),
         industry: form.industry || undefined,
         languages: form.languages.split(',').map((s: string) => s.trim()).filter(Boolean),
+        sessionFee: Math.max(0, Math.round(Number(form.sessionFee) || 0)),
       });
       toast('Profile saved');
       reload();
@@ -153,6 +156,23 @@ function Inner() {
               Show me to students as a mentor
             </label>
           </Card>
+          <div id="fee" className="scroll-mt-24">
+            <Card title="Session fee">
+              <Field label="Price per session (₹)" hint={pay ? `0 means free. The programme allows up to ₹${pay.maxSessionFee}.` : '0 means free.'}>
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-ink-500">₹</span>
+                  <input className="input pl-7 tabular-nums" inputMode="numeric" value={form.sessionFee} onChange={(e) => setForm({ ...form, sessionFee: e.target.value.replace(/[^0-9]/g, '').slice(0, 6) })} />
+                </div>
+              </Field>
+              {pay && Number(form.sessionFee) > 0 && (
+                <p className="mt-3 text-[12.5px] text-ink-500">
+                  Students pay <span className="font-medium text-ink-800">{inr(Number(form.sessionFee) * 100)}</span> when they book; you receive{' '}
+                  <span className="font-medium text-ink-800">{inr(Math.round(Number(form.sessionFee) * 100 * (1 - pay.platformFeePercent / 100)))}</span> after the {pay.platformFeePercent}% platform fee. Cancel a paid session and the student is refunded in full.
+                </p>
+              )}
+              {pay && !pay.enabled && <p className="mt-3 text-[12.5px] text-amber-800">Paid sessions are switched off for the programme right now, so sessions stay free.</p>}
+            </Card>
+          </div>
           <Card title="Private (staff only)">
             <Field label="LinkedIn URL" hint="Visible only to Alumni Relations. Never shown to students.">
               <input className="input" value={form.linkedinUrl} onChange={(e) => setForm({ ...form, linkedinUrl: e.target.value })} placeholder="https://www.linkedin.com/in/…" />

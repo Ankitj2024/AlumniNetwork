@@ -74,10 +74,14 @@ const sessionSchema = new Schema(
     proposedSlots: [{ start: Date, end: Date, _id: false }],
     status: {
       type: String,
-      enum: ['proposed', 'scheduled', 'completed', 'cancelled', 'no_show'],
+      // awaiting_payment: a slot was picked for a paid session; it is held until the student pays (or the hold lapses).
+      enum: ['proposed', 'awaiting_payment', 'scheduled', 'completed', 'cancelled', 'no_show'],
       default: 'proposed',
       index: true,
     },
+    fee: { type: Number, min: 0 }, // paise, fixed when the slot is picked
+    paymentDueAt: Date, // hold expiry for awaiting_payment
+    payment: { type: ObjectId, ref: 'Payment' }, // the successful payment
     title: { type: String, default: 'Mentoring session' },
     agenda: { type: String, maxlength: 2000 },
     scheduledStart: { type: Date, index: true },

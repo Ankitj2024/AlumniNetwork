@@ -51,6 +51,8 @@ export interface Mentor {
   capacity?: Capacity;
   availability?: { id: string; dayOfWeek: number; startMinute: number; endMinute: number; timezone: string }[];
   match?: { score: number; reasons: string[]; breakdown?: Record<string, number> };
+  /** Fee per session in rupees; 0 = free. Only charged when paid sessions are enabled. */
+  sessionFee?: number;
 }
 
 export interface StudentCard {
@@ -111,7 +113,7 @@ export interface Mentorship {
 
 export interface SessionT {
   id: string;
-  status: 'proposed' | 'scheduled' | 'completed' | 'cancelled' | 'no_show';
+  status: 'proposed' | 'awaiting_payment' | 'scheduled' | 'completed' | 'cancelled' | 'no_show';
   title: string;
   agenda: string | null;
   proposedBy: string;
@@ -123,6 +125,11 @@ export interface SessionT {
   summary: string | null;
   mentorPrivateNotes?: string | null;
   cancelReason: string | null;
+  /** Price in paise, fixed when a slot was picked (0 = free). */
+  fee: number;
+  paymentDueAt: string | null;
+  paid: boolean;
+  paymentId: string | null;
   completedAt: string | null;
 }
 

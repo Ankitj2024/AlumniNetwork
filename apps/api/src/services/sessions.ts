@@ -3,12 +3,16 @@ import { HOUR_MS, type Clock, systemClock } from '../lib/clock.js';
 import { badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
 import { CalendarConnection, Mentorship, Session } from '../models/index.js';
 import type { Viewer } from '../serializers/index.js';
-import { mentorshipAccess, touchMentorship } from './access.js';
+import { mentorshipAccess, touchMentorship, type MentorshipAccess } from './access.js';
 import { audit } from './audit.js';
+import { failOpenPayments, refundOnCancel, rupees, sessionFeeFor } from './payments.js';
 import { createExternalEvent, deleteExternalEvent, jitsiLink, type Provider } from './calendar.js';
 import { notify } from './notify.js';
 
 type Slot = { start: Date; end: Date };
+
+/** How long a picked slot is held for a paid session while the student pays. */
+export const PAYMENT_HOLD_MS = 30 * 60_000;
 
 function validateSlots(slots: Slot[], now: Date) {
   if (!slots.length || slots.length > 5) throw badRequest('invalid_slots', 'Propose between 1 and 5 time slots');
@@ -25,7 +29,7 @@ async function assertNoMentorClash(alumnusId: unknown, slot: Slot, excludeSessio
   const ms = await Mentorship.find({ alumnus: alumnusId }).select('_id').lean();
   const clash = await Session.findOne({
     mentorship: { $in: ms.map((m) => m._id) },
-    status: 'scheduled',
+    status: { $in: ['scheduled', 'awaiting_payment'] },
     _id: { $ne: excludeSessionId },
     scheduledStart: { $lt: slot.end },
     scheduledEnd: { $gt: slot.start },
@@ -64,10 +68,36 @@ export async function bookSession(viewer: Viewer, mentorshipId: string, sessionI
   if (!slot?.start || !slot.end) throw badRequest('invalid_slot', 'Choose one of the proposed slots');
   if (slot.start <= clock()) throw badRequest('slot_past', 'That slot is already in the past — ask for new times');
   await assertNoMentorClash(acc.mentorship.alumnus, { start: slot.start, end: slot.end }, s._id);
-
-  s.status = 'scheduled';
   s.scheduledStart = slot.start;
   s.scheduledEnd = slot.end;
+
+  // Paid mentor: hold the slot until the student pays (at most 30 minutes, never past the start).
+  const fee = await sessionFeeFor(acc.mentorship.alumnus);
+  if (fee > 0) {
+    const now = clock().getTime();
+    s.status = 'awaiting_payment';
+    s.fee = fee;
+    s.paymentDueAt = new Date(Math.max(now + 2 * 60_000, Math.min(now + PAYMENT_HOLD_MS, slot.start.getTime() - 5 * 60_000)));
+    await s.save();
+    await touchMentorship(acc.mentorship._id, clock());
+    await audit(viewer, 'session.held_for_payment', 'Session', s._id, { fee });
+    if (viewer.id !== acc.studentUserId) {
+      await notify(acc.studentUserId, 'payment_due', {
+        title: 'Pay to confirm your session',
+        body: `${s.title} — ${rupees(fee)}. The slot is held for you until ${s.paymentDueAt.toUTCString()}.`,
+        link: `/mentorships/${mentorshipId}?tab=sessions`,
+      });
+    }
+    return s;
+  }
+  return confirmSession(viewer, acc, s, clock);
+}
+
+/** Turns a booked slot into a confirmed session: video link, calendar events, notifications. */
+export async function confirmSession(viewer: Viewer, acc: MentorshipAccess, s: InstanceType<typeof Session>, clock: Clock = systemClock) {
+  const slot = { start: s.scheduledStart!, end: s.scheduledEnd! };
+  s.status = 'scheduled';
+  s.paymentDueAt = undefined;
   s.videoLink = jitsiLink();
 
   // Calendar sync for each participant who connected a calendar (own calendar, no attendee list).
@@ -91,24 +121,29 @@ export async function bookSession(viewer: Viewer, mentorshipId: string, sessionI
     await notify(uid, 'session_scheduled', {
       title: 'Mentoring session confirmed',
       body: `${s.title} — ${when}. Video link and calendar file are on the session page.`,
-      link: `/mentorships/${mentorshipId}?tab=sessions`,
+      link: `/mentorships/${String(acc.mentorship._id)}?tab=sessions`,
     });
   }
   return s;
 }
 
-export async function cancelSession(viewer: Viewer, mentorshipId: string, sessionId: string, reason?: string) {
+export async function cancelSession(viewer: Viewer, mentorshipId: string, sessionId: string, reason?: string, clock: Clock = systemClock) {
   const acc = await mentorshipAccess(viewer, mentorshipId, { write: true });
   const s = await Session.findOne({ _id: sessionId, mentorship: acc.mentorship._id });
   if (!s) throw notFound('Session');
-  if (!['proposed', 'scheduled'].includes(s.status)) throw conflict('not_cancellable', 'Only upcoming sessions can be cancelled');
+  if (!['proposed', 'awaiting_payment', 'scheduled'].includes(s.status)) throw conflict('not_cancellable', 'Only upcoming sessions can be cancelled');
+  const wasHeld = s.status === 'awaiting_payment';
   s.status = 'cancelled';
+  s.paymentDueAt = undefined;
   s.cancelledBy = viewer.id as any;
   s.cancelReason = reason;
   for (const e of s.externalEvents ?? []) await deleteExternalEvent(String(e.userId), e.provider as Provider, String(e.eventId));
   await s.save();
+  if (wasHeld) await failOpenPayments(s._id, 'The session was cancelled before it was paid for');
+  // Paid sessions: mentor or staff cancellations are always refunded; a student's only up to the cutoff.
+  const refund = await refundOnCancel(s, acc.role === 'student' ? 'student' : 'mentor', clock());
   await notify(acc.counterpartUserId, 'session_cancelled', { title: 'A session was cancelled', body: reason ?? undefined, link: `/mentorships/${mentorshipId}?tab=sessions` });
-  return s;
+  return { session: s, refund };
 }
 
 export async function completeSession(

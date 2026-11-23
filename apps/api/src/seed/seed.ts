@@ -35,6 +35,8 @@ import {
   MentorshipRequest,
   Message,
   Notification,
+  Payment,
+  PaymentMethod,
   PlacementOutcome,
   Session,
   Settings,
@@ -457,6 +459,50 @@ export async function runSeed({ reset }: { reset: boolean }) {
         prev = c.health;
       }
     }
+  }
+
+  /* ---------------- paid sessions: mentor fees and the demo student's wallet */
+  const FEES = [199, 299, 499, 799, 999];
+  await Alumnus.bulkWrite(
+    verified.map((a, i) => ({ updateOne: { filter: { _id: a.alumnus._id }, update: { $set: { sessionFee: a === demoMentor ? 499 : i % 3 === 0 ? FEES[i % FEES.length] : 0 } } } })),
+  );
+  const yr = now.getFullYear();
+  const [hdfc, icici, sbi] = await PaymentMethod.insertMany([
+    { user: demoStudent.user._id, gateway: 'test', token: 'tok_test_demo_hdfc', network: 'visa', cardType: 'credit', issuer: 'HDFC Bank', nickname: 'HDFC Millennia', last4: '4242', expMonth: 8, expYear: yr + 3, holder: 'Aarav Sharma', finish: 'metal', isDefault: true, createdAt: daysAgo(62, now) },
+    { user: demoStudent.user._id, gateway: 'test', token: 'tok_test_demo_icici', network: 'mastercard', cardType: 'credit', issuer: 'ICICI Bank', nickname: 'ICICI Coral', last4: '4444', expMonth: 2, expYear: yr + 2, holder: 'Aarav Sharma', finish: 'black', createdAt: daysAgo(40, now) },
+    { user: demoStudent.user._id, gateway: 'test', token: 'tok_test_demo_sbi', network: 'rupay', cardType: 'debit', issuer: 'State Bank of India', nickname: 'SBI Debit', last4: '6521', expMonth: 11, expYear: yr + 4, holder: 'Aarav Sharma', finish: 'color', createdAt: daysAgo(20, now) },
+  ]);
+  const demoM = await Mentorship.findOne({ student: demoStudent.profile._id, alumnus: demoMentor.alumnus._id }).lean();
+  if (demoM) {
+    const FEE = 49900;
+    const PLATFORM = Math.round(FEE * 0.1);
+    const cards = [hdfc, hdfc, icici, hdfc, sbi, icici];
+    const paidSessions = await Session.find({ mentorship: demoM._id, status: { $in: ['completed', 'no_show', 'scheduled'] } }).sort({ scheduledStart: 1 });
+    let n = 0;
+    const mkPayment = (sess: { _id: unknown; scheduledStart?: Date | null }, o: Record<string, unknown>) => {
+      n++;
+      // paid a few days before the session, but never in the future (upcoming sessions were paid recently)
+      const at = new Date(Math.min(now.getTime() - 2 * 3600_000, (sess.scheduledStart ?? now).getTime() - 3 * DAY_MS));
+      return Payment.create({
+        payer: demoStudent.user._id, student: demoStudent.profile._id, alumnus: demoMentor.alumnus._id, mentorship: demoM._id, session: sess._id,
+        amount: FEE, platformFee: PLATFORM, mentorShare: FEE - PLATFORM, gateway: 'test',
+        orderId: `order_test_seed_${n}`, gatewayPaymentId: `pay_test_seed_${n}`, receiptNo: `AMN-${at.toISOString().slice(0, 10).replace(/-/g, '')}-SEED${String(n).padStart(2, '0')}`,
+        status: 'paid', paidAt: at, createdAt: at, ...o,
+      });
+    };
+    for (const [i, sess] of paidSessions.entries()) {
+      const card = cards[i % cards.length];
+      const pay = i === 3
+        ? await mkPayment(sess, { method: { kind: 'upi', vpa: 'aa***@okhdfc' } })
+        : await mkPayment(sess, { method: { kind: 'card', network: card.network, last4: card.last4, savedMethod: card._id } });
+      await Session.updateOne({ _id: sess._id }, { $set: { fee: FEE, payment: pay._id } });
+    }
+    // One session the mentor had to cancel: paid, then refunded in full.
+    const cst = daysAgo(26, now);
+    cst.setUTCHours(13, 30, 0, 0);
+    const cancelled = await Session.create({ mentorship: demoM._id, proposedBy: demoMentor.user._id, proposedSlots: [{ start: cst, end: new Date(cst.getTime() + 45 * 60000) }], status: 'cancelled', title: 'Portfolio review', scheduledStart: cst, scheduledEnd: new Date(cst.getTime() + 45 * 60000), cancelledBy: demoMentor.user._id, cancelReason: 'Work travel came up — sorry! Let us pick another time.', fee: FEE, createdAt: daysAgo(32, now) });
+    const rp = await mkPayment(cancelled, { method: { kind: 'card', network: 'mastercard', last4: icici.last4, savedMethod: icici._id }, status: 'refunded', refund: { amount: FEE, status: 'processed', gatewayRefundId: 'rfnd_test_seed_1', reason: 'Your mentor cancelled the session', at: daysAgo(27, now) } });
+    await Session.updateOne({ _id: cancelled._id }, { $set: { payment: rp._id } });
   }
 
   /* ---------------- requests: pending, declined, expired, withdrawn */

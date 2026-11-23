@@ -82,6 +82,12 @@ const settingsSchema = new Schema(
     verification: {
       autoApproveExactMatch: { type: Boolean, default: false },
     },
+    payments: {
+      enabled: { type: Boolean, default: true },
+      platformFeePercent: { type: Number, default: 10, min: 0, max: 50 },
+      maxSessionFee: { type: Number, default: 5000, min: 0, max: 100000 }, // rupees
+      refundCutoffHours: { type: Number, default: 24, min: 0, max: 168 }, // student cancellations closer than this aren't refunded
+    },
     updatedBy: { type: ObjectId, ref: 'User' },
   },
   { timestamps: true },

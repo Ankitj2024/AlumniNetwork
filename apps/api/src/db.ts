@@ -45,6 +45,9 @@ export async function connectDb(uri?: string): Promise<string> {
 }
 
 export async function disconnectDb(): Promise<void> {
+  // The embedded server is stopped abruptly (on Windows there is no graceful signal), which drops
+  // writes not yet flushed to disk. Flush first so e.g. `npm run seed` keeps everything it wrote.
+  if (embedded) await mongoose.connection.db?.admin().command({ fsync: 1 }).catch((e) => logger.warn('fsync before shutdown failed', { e: String(e) }));
   await mongoose.disconnect();
   if (embedded) {
     await embedded.stop({ doCleanup: false }); // keep the persisted data directory

@@ -33,6 +33,13 @@ export function productionConfigProblems(e: Env = liveEnv): { errors: string[]; 
     warnings.push('Documents are stored on the API server disk (STORAGE_DRIVER=local). Use a persistent, backed-up disk, or set STORAGE_DRIVER=s3');
   }
 
+  if (e.paymentGateway === 'test') errors.push('PAYMENT_GATEWAY=test is a fake gateway for development; use razorpay (or off) in production');
+  if (e.paymentGateway === 'razorpay') {
+    if (!e.razorpay.keyId || !e.razorpay.keySecret) errors.push('PAYMENT_GATEWAY=razorpay needs RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET');
+    else if (e.razorpay.keyId.startsWith('rzp_test_')) warnings.push('RAZORPAY_KEY_ID is a test-mode key: payments are not real');
+    if (!e.razorpay.webhookSecret) errors.push('RAZORPAY_WEBHOOK_SECRET is required so payments confirm even if the student closes the browser mid-checkout');
+  }
+
   if (e.googleClientId && !e.googleClientSecret) errors.push('GOOGLE_CLIENT_SECRET is missing (GOOGLE_CLIENT_ID is set)');
   if (!e.requireStaff2fa) warnings.push('REQUIRE_STAFF_2FA is off: staff accounts can see identity documents, so two-factor sign-in is strongly recommended');
   if (!e.requireEmailVerification) warnings.push('REQUIRE_EMAIL_VERIFICATION is off: unconfirmed accounts can send mentorship requests');

@@ -84,7 +84,7 @@ function Inner() {
       />
 
       {tab === 'overview' && <OverviewTab m={m} careerGoals={data.careerGoals} stats={data.stats} onGo={change} />}
-      {tab === 'sessions' && <SessionsTab id={id} role={role} active={active} />}
+      {tab === 'sessions' && <SessionsTab id={id} role={role} active={active} mentorFee={m.mentor.sessionFee ?? 0} otherName={other.name} />}
       {tab === 'goals' && <GoalsTab id={id} role={role} active={active} careerGoals={data.careerGoals} />}
       {tab === 'messages' && <MessagesTab id={id} role={role} active={active} otherName={other.name} />}
       {tab === 'feedback' && <FeedbackTab id={id} role={role} sessionParam={params.get('session')} />}

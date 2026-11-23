@@ -122,8 +122,8 @@ r.post(
   '/:id/sessions/:sid/cancel',
   ah(async (req, res) => {
     const b = parse(z.object({ reason: z.string().trim().max(300).optional() }), req.body ?? {});
-    const s = await cancelSession(req.viewer!, String(oid(req.params.id)), String(oid(req.params.sid, 'Session')), b.reason);
-    res.json({ session: sessionView(s.toObject(), req.viewer!) });
+    const { session: s, refund } = await cancelSession(req.viewer!, String(oid(req.params.id)), String(oid(req.params.sid, 'Session')), b.reason);
+    res.json({ session: sessionView(s.toObject(), req.viewer!), refund });
   }),
 );
 

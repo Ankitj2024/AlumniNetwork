@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Avatar, Badge, Bar, Card, CapacityMeter, ErrorBox, Field, Modal, PageLoader, Spinner, useToast } from '@/components/ui';
+import { inr, usePaymentConfig } from '@/lib/payments';
 import { ApiError, post } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { AREA_LABELS, DAYS, fmtDate, minutesToTime } from '@/lib/format';
@@ -17,6 +18,7 @@ export default function MentorProfile() {
   const toast = useToast();
   const { me } = useAuth();
   const { data, loading, error, reload } = useApi<{ mentor: Mentor; accepting: boolean; requestState?: { pendingRequestId: string | null; mentorshipId: string | null; cooldownUntil: string | null } }>(`/mentors/${id}`);
+  const pay = usePaymentConfig();
   const student = useApi<{ profile: { goals: CareerGoal[] }; throttle: any }>(me?.user.role === 'student' ? '/students/me' : null);
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState('');
@@ -125,6 +127,18 @@ export default function MentorProfile() {
         <div className="space-y-6">
           <Card title="Availability">
             <CapacityMeter capacity={m.capacity} />
+            {pay?.enabled && (
+              <p className="mt-3 flex items-baseline justify-between rounded-xl bg-ink-50 px-3 py-2 text-sm ring-1 ring-inset ring-[color:var(--line)]">
+                <span className="text-ink-500">Session fee</span>
+                {m.sessionFee ? (
+                  <span className="font-semibold tabular-nums text-ink-900">
+                    {inr(Math.min(m.sessionFee, pay.maxSessionFee) * 100)} <span className="font-normal text-ink-500">/ session</span>
+                  </span>
+                ) : (
+                  <span className="font-semibold text-brand-700">Free</span>
+                )}
+              </p>
+            )}
             {m.capacity?.paused && <p className="mt-2 text-sm text-ink-500">Taking a break{m.capacity.pausedUntil ? ` until ${fmtDate(m.capacity.pausedUntil)}` : ''}.</p>}
             <div className="mt-4">
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-500">Usually available</h3>

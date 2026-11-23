@@ -29,8 +29,16 @@ A student sees an alumnus only after the alumnus is **verified** against institu
 | 16 | Capacity | Alumnus settings | Number of mentee slots, how many are used, paused yes/no and until when |
 | 17 | Weekly availability | Alumnus settings | Day of week + time range + time zone only |
 | 18 | Match score and reasons | Computed | Built only from fields 3–17 and the student's own profile |
+| 19 | Session fee | Alumnus settings | Price per session in rupees (0 = free), capped by the programme |
 
 Inside a mentorship the student is part of, they additionally see: messages, proposed/confirmed session times, the per-session video-call link, the **shared** session summary, goals, action items, and feedback given in that mentorship.
+
+### Payments
+
+- **Card numbers and CVVs never reach the platform.** Students type them into the payment gateway's own checkout (Razorpay). The platform keeps only the gateway's token, the card network, the last four digits, the expiry and the name on the card, and the API refuses any request that contains a card number.
+- A **student** sees their own payments: amount, receipt number, how they paid (e.g. "Visa •••• 4242" or a masked UPI id like "aa***@okhdfc"), and any refund.
+- A **mentor** sees payments for their sessions: the student's name, the amount, the platform fee and their share. They never see how the student paid.
+- **Admin and Alumni Relations** see all payments, for refunds and disputes. Gateway ids and tokens are never sent to any browser.
 
 ## 2. Alumni information a student can NEVER see
 

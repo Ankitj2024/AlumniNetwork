@@ -40,6 +40,9 @@ const userSchema = new Schema(
     mfaRecoveryCodes: { type: [String], select: false, default: undefined }, // SHA-256 hashes, one-time use
     mfaFailures: { type: Number, select: false },
     mfaLockedUntil: { type: Date, select: false },
+
+    // Payment gateway customer id (Razorpay), so cards a student chose to save are offered at checkout.
+    razorpayCustomerId: { type: String, select: false },
   },
   { timestamps: true },
 );
@@ -86,6 +89,8 @@ const alumnusSchema = new Schema(
     verifiedAt: Date,
     institutionRecord: { type: ObjectId, ref: 'InstitutionRecord' },
     mentorOptIn: { type: Boolean, default: true },
+    /** Fee per session in whole rupees; 0 means free. Charged only when paid sessions are enabled. */
+    sessionFee: { type: Number, min: 0, max: 100000, default: 0 },
     rollNumber: { type: String, uppercase: true, trim: true },
     graduationYear: Number,
     degree: String,

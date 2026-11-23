@@ -3,6 +3,7 @@ import { logger } from '../lib/logger.js';
 import { autoResumeExpiredPauses } from '../services/capacity.js';
 import { runEngagementDecay, sendActionItemReminders } from '../services/engagement.js';
 import { expireRequests } from '../services/requests.js';
+import { releaseExpiredHolds } from '../services/payments.js';
 import { sendSessionReminders } from '../services/sessions.js';
 
 type Job = { name: string; schedule: string; run: () => Promise<unknown> };
@@ -10,6 +11,7 @@ type Job = { name: string; schedule: string; run: () => Promise<unknown> };
 export const JOBS: Job[] = [
   { name: 'request-expiry', schedule: '*/10 * * * *', run: () => expireRequests() },
   { name: 'session-reminders', schedule: '*/5 * * * *', run: () => sendSessionReminders() },
+  { name: 'payment-holds', schedule: '*/2 * * * *', run: () => releaseExpiredHolds() },
   { name: 'action-item-reminders', schedule: '15 * * * *', run: () => sendActionItemReminders() },
   { name: 'auto-resume-pauses', schedule: '30 * * * *', run: () => autoResumeExpiredPauses() },
   // Weekly engagement-decay job: Mondays 06:00 server time

@@ -110,6 +110,7 @@ export function mentorPublic(a: Doc, extra?: { capacity?: Doc; availability?: Do
     expertise: tags(a.expertise),
     mentoringAreas: a.mentoringAreas ?? [],
     languages: txts(a.languages),
+    sessionFee: typeof a.sessionFee === 'number' ? a.sessionFee : 0,
     capacity: extra?.capacity !== undefined ? capacityView(extra.capacity) : undefined,
     availability: extra?.availability ? extra.availability.map(availabilityView) : undefined,
     match: extra?.match,
@@ -240,6 +241,10 @@ export function sessionView(s: Doc, viewer: Viewer, opts?: { viewerIsMentor?: bo
     calendarSynced: (s.externalEvents ?? []).some((e: any) => String(e.userId) === viewer.id),
     summary: txt(s.summary),
     cancelReason: txt(s.cancelReason),
+    fee: typeof s.fee === 'number' ? s.fee : 0, // paise
+    paymentDueAt: s.status === 'awaiting_payment' ? iso(s.paymentDueAt) : null,
+    paid: !!s.payment,
+    paymentId: id(s.payment),
     completedAt: iso(s.completedAt),
     createdAt: iso(s.createdAt),
   };
@@ -380,4 +385,87 @@ export function findPrivacyViolations(payload: unknown, viewer: Viewer | null): 
   };
   walk(payload, '$', 0);
   return violations;
+}
+
+/* ------------------------------------------------------------- payments */
+const nameOf = (u: any) => (u && typeof u === 'object' && 'name' in u ? txt(u.name) : null);
+
+function methodSummary(m: Doc) {
+  if (!m?.kind) return null;
+  const NET: Record<string, string> = { visa: 'Visa', mastercard: 'Mastercard', rupay: 'RuPay', amex: 'Amex' };
+  const label =
+    m.kind === 'card'
+      ? `${NET[m.network] ?? 'Card'} •••• ${m.last4 ?? ''}`.trim()
+      : m.kind === 'upi'
+        ? `UPI ${m.vpa ?? ''}`.trim()
+        : m.kind === 'netbanking'
+          ? 'Net banking'
+          : m.kind === 'wallet'
+            ? 'Wallet'
+            : 'Other';
+  return { kind: m.kind, network: m.network ?? null, last4: m.last4 ?? null, vpa: m.vpa ?? null, label };
+}
+
+/**
+ * A payment as each party sees it. The payer sees how they paid; the mentor sees the split
+ * (platform fee, their share) but not the student's card; staff see both. Gateway ids never leave.
+ */
+export function paymentView(p: Doc, viewer: Viewer) {
+  if (!p) return null;
+  const isPayer = id(p.payer) === viewer.id;
+  const staff = viewer.role === 'admin' || viewer.role === 'aro';
+  const mentorUser = p.alumnus && typeof p.alumnus === 'object' ? p.alumnus.user : null;
+  const isMentor = viewer.role === 'alumnus' && id(mentorUser) === viewer.id;
+  const out: Record<string, any> = {
+    id: id(p),
+    receiptNo: p.receiptNo,
+    status: p.status,
+    amount: p.amount,
+    currency: p.currency ?? 'INR',
+    sessionId: id(p.session),
+    sessionTitle: p.session && typeof p.session === 'object' ? txt(p.session.title) : null,
+    sessionStart: p.session && typeof p.session === 'object' ? iso(p.session.scheduledStart) : null,
+    mentorshipId: id(p.mentorship),
+    mentorName: nameOf(mentorUser),
+    studentName: nameOf(p.payer),
+    refund: p.refund?.status ? { amount: p.refund.amount ?? 0, status: p.refund.status, reason: txt(p.refund.reason), at: iso(p.refund.at) } : null,
+    paidAt: iso(p.paidAt),
+    createdAt: iso(p.createdAt),
+  };
+  if (isPayer || staff) {
+    out.method = methodSummary(p.method);
+    out.failureReason = txt(p.failureReason);
+  }
+  if (isMentor || staff) {
+    out.platformFee = p.platformFee;
+    out.mentorShare = p.mentorShare;
+  }
+  return out;
+}
+
+/** A saved card, for its owner only. The gateway token is never serialized. */
+export function methodView(m: Doc, extra?: { totalPaid?: number; recent?: Doc[] }) {
+  if (!m) return null;
+  return {
+    id: id(m),
+    network: m.network,
+    cardType: m.cardType,
+    issuer: m.issuer ?? null,
+    nickname: m.nickname ?? null,
+    last4: m.last4,
+    expMonth: m.expMonth,
+    expYear: m.expYear,
+    holder: m.holder ?? null,
+    finish: m.finish,
+    isDefault: !!m.isDefault,
+    totalPaid: extra?.totalPaid ?? 0,
+    recent: (extra?.recent ?? []).map((p: any) => ({
+      id: id(p),
+      mentorName: nameOf(p.alumnus?.user),
+      title: txt(p.session?.title) ?? 'Mentoring session',
+      amount: p.status === 'refunded' ? p.amount : -p.amount,
+      status: p.status,
+      at: iso(p.paidAt ?? p.createdAt),
+    })),
+  };
 }

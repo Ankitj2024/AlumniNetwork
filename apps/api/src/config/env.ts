@@ -84,4 +84,16 @@ export const env = {
 
   videoProvider: (process.env.VIDEO_PROVIDER ?? 'jitsi') as 'jitsi' | 'google_meet',
   jitsiBaseUrl: process.env.JITSI_BASE_URL ?? 'https://meet.jit.si',
+
+  /**
+   * Paid sessions. 'test' is a built-in fake gateway for development (no money moves, refused in production);
+   * 'razorpay' uses Razorpay Checkout; 'off' ignores mentor fees so every session is free.
+   */
+  paymentGateway: (process.env.PAYMENT_GATEWAY ?? (nodeEnv === 'production' ? 'off' : 'test')) as 'test' | 'razorpay' | 'off',
+  razorpay: {
+    keyId: process.env.RAZORPAY_KEY_ID ?? '',
+    keySecret: process.env.RAZORPAY_KEY_SECRET ?? '',
+    webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET ?? '',
+    apiBase: process.env.RAZORPAY_API_BASE ?? 'https://api.razorpay.com/v1',
+  },
 };

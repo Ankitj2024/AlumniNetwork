@@ -164,7 +164,12 @@ describe('production config checks', () => {
       requireStaff2fa: true,
       requireEmailVerification: true,
       seedOnEmpty: false,
+      paymentGateway: 'razorpay' as const,
+      razorpay: { ...env.razorpay, keyId: 'rzp_live_example', keySecret: 'secret', webhookSecret: 'whsec' },
     };
     expect(productionConfigProblems(good)).toEqual({ errors: [], warnings: [] });
+    expect(productionConfigProblems({ ...good, paymentGateway: 'off' as const }).errors).toEqual([]);
+    expect(productionConfigProblems({ ...good, paymentGateway: 'test' as const }).errors.join()).toContain('PAYMENT_GATEWAY=test');
+    expect(productionConfigProblems({ ...good, razorpay: { ...good.razorpay, webhookSecret: '' } }).errors.join()).toContain('RAZORPAY_WEBHOOK_SECRET');
   });
 });
