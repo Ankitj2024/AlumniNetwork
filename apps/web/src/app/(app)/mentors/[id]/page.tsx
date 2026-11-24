@@ -1,8 +1,10 @@
 'use client';
+import { ArrowLeft, Clock, Languages, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Avatar, Badge, Bar, Card, CapacityMeter, ErrorBox, Field, Modal, PageLoader, Spinner, useToast } from '@/components/ui';
+import { Chips, EducationIcon, ExperienceIcon, ProfileEntry, ProfileHeader, ProfileSection } from '@/components/Profile';
+import { Bar, CapacityMeter, ErrorBox, Field, Modal, PageLoader, Spinner, useToast } from '@/components/ui';
 import { inr, usePaymentConfig } from '@/lib/payments';
 import { ApiError, post } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -12,6 +14,7 @@ import type { CareerGoal, Mentor } from '@/lib/types';
 
 const BREAKDOWN_LABELS: Record<string, string> = { expertise: 'Shared expertise', targetRole: 'Role fit', industry: 'Industry', mentoringAreas: 'Help offered', department: 'Department', availability: 'Availability', loadBalance: 'Open capacity' };
 
+/** A mentor's profile as students see it: LinkedIn-style header and sections, booking on the side. */
 export default function MentorProfile() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -29,16 +32,19 @@ export default function MentorProfile() {
   if (loading) return <PageLoader />;
   if (error || !data) return <ErrorBox message={error ?? 'Not found'} />;
   const m = data.mentor;
+  const first = m.name.split(' ')[0];
   const rs = data.requestState;
   const t = student.data?.throttle;
   const throttled = t && (t.pending >= t.maxPending || t.inPeriod >= t.maxPerPeriod || t.activeMentorships >= t.maxActiveMentorships);
+  const isStudent = me?.user.role === 'student';
+  const fee = pay?.enabled ? (m.sessionFee ? Math.min(m.sessionFee, pay.maxSessionFee) : 0) : null;
 
   async function send() {
     setBusy(true);
     setErr(null);
     try {
       await post('/requests', { alumnusId: m.id, message, goalIds });
-      toast(`Request sent to ${m.name}. They have ${7} days to respond.`);
+      toast(`Request sent to ${m.name}. They have 7 days to respond.`);
       setOpen(false);
       reload();
       student.reload();
@@ -49,101 +55,116 @@ export default function MentorProfile() {
     }
   }
 
+  // The primary action, LinkedIn's "Connect" spot.
+  const action = !isStudent ? null : rs?.mentorshipId ? (
+    <Link href={`/mentorships/${rs.mentorshipId}`} className="btn-primary px-5">
+      Open mentorship
+    </Link>
+  ) : rs?.pendingRequestId ? (
+    <span className="btn-secondary cursor-default px-5">Request sent</span>
+  ) : rs?.cooldownUntil || !data.accepting || throttled ? null : (
+    <button className="btn-primary px-5" onClick={() => setOpen(true)}>
+      Request mentorship
+    </button>
+  );
+  const status = !isStudent
+    ? null
+    : rs?.pendingRequestId
+      ? `Your request is waiting for ${first}’s reply.`
+      : rs?.cooldownUntil
+        ? `${first} wasn’t available recently. You can ask again after ${fmtDate(rs.cooldownUntil)} — meanwhile, try your other matches.`
+        : !rs?.mentorshipId && !data.accepting
+          ? `${first} isn’t taking new mentees right now.`
+          : !rs?.mentorshipId && throttled
+            ? 'You’ve reached your request limit. Wait for a reply or withdraw a pending request first.'
+            : null;
+
+  const role = [m.currentRole, m.currentCompany].filter(Boolean).join(' at ');
+  const place = [m.city, m.industry].filter(Boolean).join(' · ');
+
   return (
     <>
-      <button className="btn-ghost mb-4 px-2 text-sm" onClick={() => router.back()}>
-        ← Back
+      <button className="btn-ghost mb-4 -ml-2 gap-1.5 px-2.5 text-[13px]" onClick={() => router.back()}>
+        <ArrowLeft size={15} /> Back
       </button>
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <div className="card p-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-              <Avatar name={m.name} size="lg" />
-              <div className="flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-2xl font-semibold">{m.name}</h1>
-                  {m.verified && <Badge tone="green">✓ Verified alumnus</Badge>}
-                </div>
-                <p className="mt-0.5 text-ink-700">{m.headline}</p>
-                <p className="mt-1 text-sm text-ink-500">{[m.industry, m.city, m.yearsExperience != null && `${m.yearsExperience} years experience`, m.department && `${m.degree ?? ''} ${m.department}`.trim(), m.graduationYear && `Class of ${m.graduationYear}`].filter(Boolean).join(' · ')}</p>
-              </div>
-            </div>
-            {m.bio && <p className="mt-5 whitespace-pre-line text-sm leading-relaxed text-ink-700">{m.bio}</p>}
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <div>
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-500">Expertise</h3>
-                <div className="flex flex-wrap gap-1">
-                  {m.expertise.map((t) => (
-                    <Badge key={t.id}>{t.name}</Badge>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-500">Can help with</h3>
-                <div className="flex flex-wrap gap-1">
-                  {m.mentoringAreas.map((a) => (
-                    <Badge key={a} tone="blue">
-                      {AREA_LABELS[a] ?? a}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-              {m.languages.length > 0 && (
-                <div>
-                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-500">Languages</h3>
-                  <p className="text-sm">{m.languages.join(', ')}</p>
-                </div>
-              )}
-            </div>
-          </div>
 
-          {m.match && (
-            <Card title={`Why this match · ${m.match.score}/100`}>
-              <ul className="mb-5 space-y-2 text-sm">
-                {m.match.reasons.map((r) => (
-                  <li key={r} className="flex gap-2">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" />
-                    {r}
-                  </li>
-                ))}
-              </ul>
-              {m.match.breakdown && (
-                <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
-                  {Object.entries(m.match.breakdown).map(([k, v]) => (
-                    <div key={k}>
-                      <div className="mb-1 flex justify-between text-xs text-ink-600">
-                        <span>{BREAKDOWN_LABELS[k] ?? k}</span>
-                        <span className="tabular-nums">{Math.round(v * 100)}%</span>
-                      </div>
-                      <Bar value={v * 100} />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Card>
-          )}
-        </div>
-
-        <div className="space-y-6">
-          <Card title="Availability">
-            <CapacityMeter capacity={m.capacity} />
-            {pay?.enabled && (
-              <p className="mt-3 flex items-baseline justify-between rounded-xl bg-ink-50 px-3 py-2 text-sm ring-1 ring-inset ring-[color:var(--line)]">
-                <span className="text-ink-500">Session fee</span>
-                {m.sessionFee ? (
-                  <span className="font-semibold tabular-nums text-ink-900">
-                    {inr(Math.min(m.sessionFee, pay.maxSessionFee) * 100)} <span className="font-normal text-ink-500">/ session</span>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="min-w-0 space-y-6">
+          <ProfileHeader
+            name={m.name}
+            headline={m.headline}
+            verified={m.verified}
+            lines={[role, place]}
+            actions={action}
+            badges={
+              <>
+                {m.match && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-[12.5px] font-medium text-brand-700">
+                    <Sparkles size={13} /> {m.match.score} match for you
                   </span>
-                ) : (
-                  <span className="font-semibold text-brand-700">Free</span>
                 )}
+                {m.yearsExperience != null && <span className="rounded-full bg-ink-900/[0.05] px-3 py-1 text-[12.5px] font-medium text-ink-600">{m.yearsExperience} years’ experience</span>}
+                {m.graduationYear && <span className="rounded-full bg-ink-900/[0.05] px-3 py-1 text-[12.5px] font-medium text-ink-600">Class of {m.graduationYear}</span>}
+              </>
+            }
+          />
+          {status && <p className="rounded-2xl bg-ink-900/[0.04] px-5 py-3.5 text-[14px] text-ink-700">{status}</p>}
+
+          {m.bio && (
+            <ProfileSection title="About">
+              <p className="whitespace-pre-line text-[15px] leading-relaxed text-ink-700">{m.bio}</p>
+            </ProfileSection>
+          )}
+
+          {(m.currentRole || m.currentCompany) && (
+            <ProfileSection title="Experience">
+              <ProfileEntry monogram={m.currentCompany ?? m.currentRole ?? undefined} icon={ExperienceIcon} title={m.currentRole ?? 'Current role'} subtitle={m.currentCompany} meta={[m.industry, m.yearsExperience != null && `${m.yearsExperience} years in industry`, m.city].filter(Boolean).join(' · ')} />
+            </ProfileSection>
+          )}
+
+          {(m.department || m.graduationYear) && (
+            <ProfileSection title="Education">
+              <ProfileEntry icon={EducationIcon} title={[m.degree, m.department].filter(Boolean).join(', ') || 'Alumnus'} subtitle={m.graduationYear ? `Class of ${m.graduationYear}` : null} meta={m.verified ? 'Verified against the institution’s alumni records' : null} />
+            </ProfileSection>
+          )}
+
+          <ProfileSection title="Skills">
+            <Chips items={m.expertise.map((x) => x.name)} />
+          </ProfileSection>
+
+          <ProfileSection title="Mentoring">
+            <p className="mb-3 text-[13px] font-medium text-ink-500">Can help with</p>
+            <Chips items={m.mentoringAreas.map((a) => AREA_LABELS[a] ?? a)} tone="accent" />
+            {m.languages.length > 0 && (
+              <p className="mt-5 flex items-center gap-2 text-[14px] text-ink-600">
+                <Languages size={15} className="text-ink-400" /> Speaks {m.languages.join(', ')}
               </p>
             )}
-            {m.capacity?.paused && <p className="mt-2 text-sm text-ink-500">Taking a break{m.capacity.pausedUntil ? ` until ${fmtDate(m.capacity.pausedUntil)}` : ''}.</p>}
-            <div className="mt-4">
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-500">Usually available</h3>
+          </ProfileSection>
+        </div>
+
+        <aside className="space-y-6">
+          <ProfileSection title="Availability">
+            <CapacityMeter capacity={m.capacity} />
+            {fee !== null && (
+              <div className="mt-4 flex items-baseline justify-between rounded-xl bg-ink-900/[0.04] px-4 py-3 text-[14px]">
+                <span className="text-ink-500">Session fee</span>
+                {fee > 0 ? (
+                  <span className="font-semibold tabular-nums">
+                    {inr(fee * 100)} <span className="font-normal text-ink-500">/ session</span>
+                  </span>
+                ) : (
+                  <span className="font-semibold text-ok-700">Free</span>
+                )}
+              </div>
+            )}
+            {m.capacity?.paused && <p className="mt-3 text-[14px] text-ink-500">Taking a break{m.capacity.pausedUntil ? ` until ${fmtDate(m.capacity.pausedUntil)}` : ''}.</p>}
+            <div className="mt-5">
+              <p className="mb-2 flex items-center gap-1.5 text-[13px] font-medium text-ink-500">
+                <Clock size={14} /> Usually available
+              </p>
               {m.availability?.length ? (
-                <ul className="space-y-1 text-sm">
+                <ul className="space-y-1.5 text-[14px]">
                   {m.availability.map((w) => (
                     <li key={w.id} className="flex justify-between">
                       <span>{DAYS[w.dayOfWeek]}</span>
@@ -152,39 +173,50 @@ export default function MentorProfile() {
                       </span>
                     </li>
                   ))}
-                  <li className="pt-1 text-xs text-ink-400">{m.availability[0].timezone}</li>
+                  <li className="pt-1 text-[12px] text-ink-400">{m.availability[0].timezone}</li>
                 </ul>
               ) : (
-                <p className="muted">Not published</p>
+                <p className="text-[14px] text-ink-400">Not published</p>
               )}
             </div>
-          </Card>
+            {isStudent && action && !rs?.mentorshipId && !rs?.pendingRequestId && (
+              <div className="mt-6">
+                <button className="btn-primary w-full" onClick={() => setOpen(true)}>
+                  Request mentorship
+                </button>
+                <p className="mt-2 text-center text-[12px] text-ink-500">
+                  Mentors have 7 days to reply. You have {t ? t.maxPending - t.pending : '—'} request{t && t.maxPending - t.pending === 1 ? '' : 's'} available.
+                </p>
+              </div>
+            )}
+          </ProfileSection>
 
-          {me?.user.role === 'student' && (
-            <Card>
-              {rs?.mentorshipId ? (
-                <Link href={`/mentorships/${rs.mentorshipId}`} className="btn-primary w-full">
-                  Open your mentorship
-                </Link>
-              ) : rs?.pendingRequestId ? (
-                <p className="text-sm text-ink-700">Your request is waiting for {m.name.split(' ')[0]}&apos;s reply.</p>
-              ) : rs?.cooldownUntil ? (
-                <p className="text-sm text-ink-700">{m.name.split(' ')[0]} wasn&apos;t available recently. You can ask again after {fmtDate(rs.cooldownUntil)} — meanwhile, try your other matches.</p>
-              ) : !data.accepting ? (
-                <p className="text-sm text-ink-700">{m.name.split(' ')[0]} isn&apos;t taking new mentees right now.</p>
-              ) : throttled ? (
-                <p className="text-sm text-amber-800">You&apos;ve reached your request limit. Wait for a reply or withdraw a pending request first.</p>
-              ) : (
-                <>
-                  <button className="btn-primary w-full" onClick={() => setOpen(true)}>
-                    Request mentorship
-                  </button>
-                  <p className="mt-2 text-center text-xs text-ink-500">Mentors have 7 days to reply. You have {t ? t.maxPending - t.pending : '—'} request{t && t.maxPending - t.pending === 1 ? '' : 's'} available.</p>
-                </>
+          {m.match && (
+            <ProfileSection title={`Why you match · ${m.match.score}`}>
+              <ul className="space-y-2.5 text-[14px] text-ink-700">
+                {m.match.reasons.map((r) => (
+                  <li key={r} className="flex gap-2">
+                    <Sparkles size={14} className="mt-0.5 shrink-0 text-brand-600" />
+                    {r}
+                  </li>
+                ))}
+              </ul>
+              {m.match.breakdown && (
+                <div className="mt-5 space-y-3 border-t border-[color:var(--line)] pt-5">
+                  {Object.entries(m.match.breakdown).map(([k, v]) => (
+                    <div key={k}>
+                      <div className="mb-1 flex justify-between text-[12px] text-ink-500">
+                        <span>{BREAKDOWN_LABELS[k] ?? k}</span>
+                        <span className="tabular-nums">{Math.round(v * 100)}%</span>
+                      </div>
+                      <Bar value={v * 100} />
+                    </div>
+                  ))}
+                </div>
               )}
-            </Card>
+            </ProfileSection>
           )}
-        </div>
+        </aside>
       </div>
 
       <Modal
@@ -205,7 +237,7 @@ export default function MentorProfile() {
         <div className="space-y-4">
           <ErrorBox message={err} />
           <Field label="Your message" hint={`${message.trim().length}/1200 · Be specific about what you hope to get. Contact details are removed automatically.`}>
-            <textarea className="input min-h-[140px]" value={message} maxLength={1200} onChange={(e) => setMessage(e.target.value)} placeholder={`Hi ${m.name.split(' ')[0]}, I'm working towards… I'd value your guidance on…`} />
+            <textarea className="input min-h-[140px]" value={message} maxLength={1200} onChange={(e) => setMessage(e.target.value)} placeholder={`Hi ${first}, I'm working towards… I'd value your guidance on…`} />
           </Field>
           {!!student.data?.profile.goals?.length && (
             <div>

@@ -134,9 +134,9 @@ export default function DiscoverPage() {
 
       <div className="grid gap-7 lg:grid-cols-[232px_1fr]">
         <aside className={cx('space-y-5 lg:sticky lg:top-6 lg:block lg:max-h-[calc(100vh-48px)] lg:self-start lg:overflow-y-auto lg:pr-1', filtersOpen ? 'block' : 'hidden')}>
-          <label className="flex cursor-pointer items-center justify-between gap-2 rounded-xl border border-brand-200 bg-gradient-to-r from-brand-50 to-surface px-3 py-2.5 text-[13px] font-medium text-brand-900">
+          <label className="flex cursor-pointer items-center justify-between gap-2 rounded-2xl bg-surface px-3.5 py-3 text-[13px] font-medium text-ink-900 shadow-card">
             Accepting mentees now
-            <span className={cx('relative h-5 w-9 rounded-full transition-colors', hasCapacity ? 'bg-brand-500' : 'bg-ink-200')}>
+            <span className={cx('relative h-5 w-9 rounded-full transition-colors', hasCapacity ? 'bg-ok-400' : 'bg-ink-200')}>
               <input type="checkbox" checked={hasCapacity} onChange={(e) => setHasCapacity(e.target.checked)} className="peer absolute inset-0 cursor-pointer opacity-0" />
               <span className={cx('absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all', hasCapacity ? 'left-[18px]' : 'left-0.5')} />
             </span>
@@ -182,7 +182,7 @@ export default function DiscoverPage() {
             )}
           </div>
           {!data && loading && (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(min(290px,100%),1fr))] gap-4">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="card space-y-3 p-5">
                   <div className="flex justify-between">
@@ -200,7 +200,7 @@ export default function DiscoverPage() {
           {data && data.mentors.length === 0 ? (
             <EmptyState title="No mentors match these filters" body={hasCapacity ? 'Try removing a filter, or include mentors who are currently full.' : 'Try removing a filter.'} />
           ) : (
-            <Stagger key={qs} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <Stagger key={qs} className="grid grid-cols-[repeat(auto-fill,minmax(min(290px,100%),1fr))] gap-4">
               {data?.mentors.map((m, i) => (
                 <StaggerItem key={m.id} className="h-full">
                   <MentorCard m={m} topMatch={isStudent && sort === 'relevance' && page === 0 && i === 0 && !!m.match && m.match.score >= 60} />

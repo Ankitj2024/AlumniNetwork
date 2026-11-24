@@ -1,9 +1,7 @@
 'use client';
 import { Briefcase, Coffee, Croissant, Gift, Hand, Keyboard, MousePointer2, MoveVertical, Plane, RefreshCw, Ship, ShoppingBasket, TrainFront, UtensilsCrossed } from 'lucide-react';
-import Link from 'next/link';
 import { useState } from 'react';
-import { Logo } from '@/components/Logo';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { SiteHeader } from '@/components/SiteHeader';
 import { WalletStack, type WalletStackCard } from '@/components/wallet/WalletStack';
 
 const ICON = 15;
@@ -91,14 +89,9 @@ export function WalletDemo() {
 
   return (
     <main className="min-h-screen bg-canvas text-ink-900">
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-5 py-5">
-        <Link href="/" aria-label="Alumni Mentor Network home">
-          <Logo compact />
-        </Link>
-        <ThemeToggle />
-      </header>
+      <SiteHeader />
 
-      <section className="mx-auto max-w-5xl px-5 pb-16">
+      <section className="mx-auto max-w-5xl px-5 pb-16 pt-12">
         <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-brand-700">Demo</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Wallet stack</h1>
         <p className="mt-2 max-w-xl text-[15px] text-ink-500">A stack of cards you can fan, flick through, and open to see a balance and recent activity.</p>

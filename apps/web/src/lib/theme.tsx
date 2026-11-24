@@ -10,10 +10,10 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 export type ThemeChoice = 'light' | 'dark' | 'system';
 export type ResolvedTheme = 'light' | 'dark';
 
-const KEY = 'amn.theme';
+import { THEME_KEY as KEY } from './headScripts';
 
-/** Inline, dependency-free copy of the resolution logic for <head>. Keep in sync with resolve(). */
-export const THEME_SCRIPT = `(function(){try{var c=localStorage.getItem('${KEY}');var d=c==='dark'||((c===null||c==='system')&&window.matchMedia('(prefers-color-scheme: dark)').matches);var r=document.documentElement;r.classList.toggle('dark',d);r.style.colorScheme=d?'dark':'light';}catch(e){}})();`;
+/** The <head> script itself is in lib/headScripts.ts (a server-safe module). */
+export { THEME_SCRIPT } from './headScripts';
 
 function readChoice(): ThemeChoice {
   try {
@@ -35,7 +35,7 @@ function apply(theme: ResolvedTheme, animate: boolean) {
   }
   root.classList.toggle('dark', theme === 'dark');
   root.style.colorScheme = theme;
-  document.querySelector('meta[name="theme-color"]:not([media])')?.setAttribute('content', theme === 'dark' ? '#0a0f1a' : '#f6f7f9');
+  document.querySelector('meta[name="theme-color"]:not([media])')?.setAttribute('content', theme === 'dark' ? '#000000' : '#f5f5f7');
 }
 
 interface ThemeCtx {

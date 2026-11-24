@@ -1,7 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
 
-/** "Continue with Google". Hidden-state aware: shows a hint when the server has no Google credentials yet. */
+/**
+ * "Continue with Google", followed by an "or" divider. Renders nothing until the server confirms
+ * Google sign-in is configured, so visitors never see a disabled button or setup notes.
+ */
 export function GoogleButton({ role, next, label = 'Continue with Google' }: { role: 'student' | 'alumnus'; next?: string | null; label?: string }) {
   const [enabled, setEnabled] = useState<boolean | null>(null);
   useEffect(() => {
@@ -23,21 +26,14 @@ export function GoogleButton({ role, next, label = 'Continue with Google' }: { r
     </svg>
   );
 
-  const cls = 'btn w-full border border-ink-200 bg-surface text-ink-800 shadow-sm hover:-translate-y-0.5 hover:shadow-md';
-  if (enabled === false) {
-    return (
-      <div>
-        <button type="button" disabled className={cls} title="Google sign-in is not configured on this server">
-          {icon} {label}
-        </button>
-        <p className="mt-1.5 text-center text-[11px] text-ink-400">Google sign-in becomes available once the administrator adds Google credentials (README §4.4).</p>
-      </div>
-    );
-  }
+  if (!enabled) return null;
   return (
-    <a href={href} className={cls} aria-disabled={enabled === null}>
-      {icon} {label}
-    </a>
+    <>
+      <a href={href} className="btn-secondary w-full py-2.5">
+        {icon} {label}
+      </a>
+      <OrDivider />
+    </>
   );
 }
 
@@ -56,9 +52,9 @@ export const GOOGLE_ERRORS: Record<string, string> = {
 export function OrDivider() {
   return (
     <div className="my-5 flex items-center gap-3 text-xs font-medium uppercase tracking-wider text-ink-400">
-      <span className="h-px flex-1 bg-gradient-to-r from-transparent to-ink-200" />
+      <span className="h-px flex-1 bg-[color:var(--line-strong)]" />
       or
-      <span className="h-px flex-1 bg-gradient-to-l from-transparent to-ink-200" />
+      <span className="h-px flex-1 bg-[color:var(--line-strong)]" />
     </div>
   );
 }

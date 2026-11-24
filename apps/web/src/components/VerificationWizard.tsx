@@ -83,7 +83,7 @@ export function VerificationWizard({ v, departments, onDone }: { v: any; departm
             onStepChange={(n) => setStep(n)}
             onFinalStepCompleted={submit}
             theme={theme}
-            accentColor="#1fa388"
+            accentColor="#0071e3"
             width="100%"
             frame={false}
             linear
@@ -92,7 +92,7 @@ export function VerificationWizard({ v, departments, onDone }: { v: any; departm
             nextButtonProps={{ disabled: !valid[step] || busy }}
             completedContent={
               <div className="flex flex-col items-center py-8 text-center">
-                <CheckCircle2 size={44} className="text-brand-500" />
+                <CheckCircle2 size={44} className="text-ok-500" />
                 <h3 className="mt-3 text-lg font-semibold">Verification submitted</h3>
                 <p className="mt-1 max-w-sm text-[13px] text-ink-500">We’re matching your details against the institution’s records. You’ll get a notification as soon as it’s reviewed.</p>
               </div>

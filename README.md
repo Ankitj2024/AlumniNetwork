@@ -287,35 +287,43 @@ This is a production setup: put the values it asks for (`JWT_SECRET`, `DATA_ENCR
 
 ## UI design system & credits
 
-**Direction — "calm depth".** Marketing and sign-in screens are expressive: one 3D focal point (the live Three.js globe) and kinetic type. The product itself is calm and fast to scan: crisp surfaces, Geist for the interface and Instrument Serif italic only as an editorial accent. Motion is used where it explains a change of state: entrances, selection, success feedback and progress. Every animation respects the OS "reduce motion" setting.
+**Direction: quiet and minimal, in the spirit of Apple's own sites.** Neutral greys carry the page, one accent (Apple's system blue) marks what you can act on, and green means success (accepted, paid, verified, open capacity). Big, tightly tracked headlines, generous space, soft white cards on a light grey canvas, pill-shaped buttons and Apple-style segmented controls. Motion is used where it explains a change of state, and every animation respects the OS "reduce motion" setting.
 
-**Light and dark themes.** Every screen has both. A sun/moon toggle sits in the landing header, the corner of the sign-in pages, the app sidebar and the phone top bar; ⌘K has "Switch theme"; Settings → Appearance offers Light, Dark or System (the default, which follows the device). The choice is remembered per browser, applied by a tiny script in `<head>` before the first paint (no flash of the wrong theme), and kept in step across open tabs. Colours are CSS variables (`apps/web/src/app/globals.css`): the neutral `ink` scale flips between themes, so `text-ink-900` is always primary text, while `surface`, `canvas` and the shadows switch with it. Coloured status tints get dark-mode equivalents in the same file. The globe has its own look per theme: a night globe with glowing light in dark mode, a pale "paper" globe in light mode.
+**Type.** San Francisco where the device has it, Inter everywhere else (`tailwind.config.ts`). SF Pro itself is not served as a web font: Apple's licence limits it to Apple platforms. So Mac, iPhone and iPad visitors see SF Pro, and Windows and Android visitors see Inter, which is close.
 
-**UX upgrades**
-- Grouped, collapsible sidebar with icons, plus a mobile bottom tab bar and a "More" sheet.
-- **⌘K / Ctrl+K command palette.** Jump to any page, or live-search mentors by name, role or company.
-- **Student home** built around one adaptive "next best step": finish your profile, find a mentor, book a session or join one. It also shows a profile-strength ring that drives match quality.
-- **Mentor inbox** as a keyboard master–detail view: ↑↓ to browse, **A** to accept, **D** to decline, with one-click guilt-free decline and "decline all" when full.
+**Colour.** All colours are tokens. The neutral `ink` scale (Apple greys) flips between themes in `apps/web/src/app/globals.css`, so `text-ink-900` is always primary text. The accent is the `brand` scale and success is `ok`, both in `tailwind.config.ts`: change `brand` to re-colour every link, button and selection. `globals.css` also defines `--color-card`, `--color-primary` and friends, which the components in `components/ui/` read.
+
+**Light and dark themes.** Every screen has both. The sun/moon toggle sits in the public navbar and at the foot of the app sidebar; ⌘K has "Switch theme"; Settings → Appearance offers Light, Dark or System (the default). The choice is applied by a tiny script in `<head>` before the first paint (`apps/web/src/lib/headScripts.ts`), so there is no flash of the wrong theme.
+
+**Navigation, one place for each thing.**
+- Public pages (landing, sign-in pages, privacy statement, demo, 404) share one navbar (`components/SiteHeader.tsx`). Its links use the gooey pill nav, which follows the landing section in view; phones get the same links in a drop-down. Signed-in visitors see a Dashboard button instead of Sign in / Get started.
+- Public pages share one layout (`app/(public)/layout.tsx`), so the navbar stays mounted between pages and the gooey pill animates from one page's item to the next. A click moves the pill straight to its item.
+- Inside the app, everything is in the sidebar (`components/Shell.tsx`): search (⌘K / Ctrl+K), the role's sections, Notifications with its unread count, and the account menu (Settings, privacy statement, appearance, sign out). On desktop it is docked and collapses to an icon rail (remembered per browser); on phones the same sidebar slides in from the menu button. All links come from `lib/nav.ts`.
+- **Profiles** are LinkedIn-style (`components/Profile.tsx`): a cover, an overlapping avatar, name, headline and place, then About, Experience, Education, Skills and Mentoring. Students see mentors this way; both "your profile" pages preview exactly what others see. Contact details never appear.
+- **Public pages** also include Terms (`/terms`), Cancellations & refunds (`/refunds`) and Contact (`/contact`), plus `robots.txt`, `sitemap.xml`, a social-sharing image and error pages. Contact details and the legal name come from `NEXT_PUBLIC_*` settings in `apps/web/.env.example`.
+
+**First-visit intro.** The first time a browser opens the site, the logo forms in liquid glass and the page fades in (`components/IntroSplash.tsx`). It is shown once per browser (`amn.intro` in local storage), skipped under "reduce motion", ends on click, Escape or Skip, and can never run longer than six seconds. To see it again, clear that key.
+
+**Other UX**
+- **Student home** built around one adaptive "next best step", with a profile-strength ring. When a session is booked it appears as a session pass: tearing the stub opens the session page.
+- **Your data** (Settings): the data export as a glass folder with four parts; open it and pick a part to download just that, or download everything.
+- **Mentor inbox** as a keyboard master–detail view: ↑↓ to browse, **A** to accept, **D** to decline.
 - **Alumni verification** as a 4-step wizard (Identity → Programme → Document → Review).
-- **Discovery:** a sticky search bar, removable filter chips, a capacity toggle, skeleton loading and a "Top match" highlight.
+- **Discovery:** a sticky search bar, filter chips, a capacity toggle, skeleton loading, and cards that size to the space available.
 
-**Brand mark.** The "network A" (`apps/web/src/components/Logo.tsx`). Its apex is a mentor node set apart by a small gap, and its crossbar is an arc, the same arcs that link cities on the globe. It comes as a gradient tile (`<LogoMark />`), a single-colour glyph (`variant="glyph"`) and a lockup with the wordmark (`<Logo />`). The same geometry is the favicon (`apps/web/src/app/icon.svg`), and an animated version is the page loader. Each instance gets unique SVG ids, so hidden and visible copies never clash.
+**Brand mark.** The "network A" (`apps/web/src/components/Logo.tsx`). Its apex is a mentor node set apart by a small gap, and its crossbar is an arc. It comes as a monochrome tile (`<LogoMark />`: graphite in light mode, white in dark mode), a single-colour glyph (`variant="glyph"`), a lockup with the wordmark (`<Logo />`) and standalone SVG markup for the glass reveal (`MARK_SVG`). The favicon (`apps/web/src/app/icon.svg`) follows the device's light/dark setting.
 
-**Hero globe.** A dotted Earth. The land comes from Natural Earth 1:110m (public domain, via the `world-atlas` package), sampled into evenly spaced rows and packed into a ~5 KB bit mask in `apps/web/src/components/three/landDots.ts`. Teal nodes mark alumni cities, violet nodes mark campus cities, and light travels along the arcs between them. The cities and links are illustrative static copy in `globeData.ts`, not user data. To change the map density, edit `STEP` in `apps/web/scripts/generate-land-dots.mjs` and run `node apps/web/scripts/generate-land-dots.mjs`. The globe can be dragged, stops rendering when scrolled off-screen, and draws a single static frame under "reduce motion".
+**Components from React Bits and 21st.dev** live in `apps/web/src/components/ui/` (the shadcn convention; the app's own UI kit is `components/ui/index.tsx`, so `@/components/ui` imports keep working). They were typed for this codebase and use the project's Framer Motion and Lucide icons.
 
-**React Bits.** Several components come from [React Bits](https://reactbits.dev) by David Haz ([GitHub](https://github.com/DavidHDev/react-bits)), used under its MIT + Commons Clause licence (copy in `apps/web/src/components/reactbits/LICENSE.md`). They were adapted to this codebase: Framer Motion imports, Lucide icons and Tailwind 3 syntax.
+| Component | Source | Where it's used |
+|---|---|---|
+| `gooey-nav.tsx` | React Bits (MIT) | Public navbar |
+| `liquid-glass-expandable-sidebar.tsx` | 21st.dev, Troy Lorents / Automate Flows (MIT) | Not currently used (the app now uses a flat docked sidebar) |
+| `liquid-glass-logo-reveal.tsx` | 21st.dev, from zanwei/glass-icon-reveal (MIT) | First-visit intro (adds `onComplete`) |
+| `glass-folder-cards.tsx` | 21st.dev | Settings → Your data |
+| `tear-ticket.tsx` | React Bits (MIT) | Landing hero, student home session pass |
 
-| Component | Where it's used |
-|---|---|
-| SpotlightCard | Mentor cards, stat tiles, the landing-page product bento |
-| AnimatedList | Mentor request inbox (keyboard-navigable list) |
-| Stepper | Alumni verification wizard |
-| ClickSpark | Accept-request confirmation burst |
-| BlurText | Landing headline (kept as a semantic `<h1>`) |
-| RotatingText | Landing "Grow your career / confidence / network / first offer" |
-| ShinyText | Landing eyebrow, sign-in tagline, "Top match" badge, student next-step label |
-| StarBorder | Landing primary calls to action |
-| LogoLoop | Landing "Our alumni mentor from teams like…" band (static copy, no data endpoint) |
+Older React Bits pieces in `components/reactbits/` (MIT + Commons Clause, licence in that folder) are still used: AnimatedList (mentor inbox), Stepper (verification wizard) and ClickSpark (accept confirmation).
 
 ## 9. Scripts
 

@@ -1,20 +1,20 @@
 'use client';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
-import { Badge, Card, ChipToggle, ErrorBox, Field, PageHeader, PageLoader, Spinner, StatusBadge, useToast } from '@/components/ui';
+import { EducationIcon, ProfileEntry, ProfileHeader, ProfileSection } from '@/components/Profile';
+import { ChipToggle, ErrorBox, Field, PageLoader, Spinner, StatusBadge, useToast } from '@/components/ui';
 import { api, put } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { AREA_LABELS, fmtDate, fmtDateTime } from '@/lib/format';
+import { AREA_LABELS, fmtDate } from '@/lib/format';
 import { useApi } from '@/lib/hooks';
 import { inr, usePaymentConfig } from '@/lib/payments';
 import { VerificationWizard } from '@/components/VerificationWizard';
-import { ShieldCheck } from 'lucide-react';
 import type { Tag } from '@/lib/types';
 
 function Inner() {
   const toast = useToast();
   const welcome = useSearchParams().get('welcome');
-  const { refresh } = useAuth();
+  const { me, refresh } = useAuth();
   const { data, loading, reload } = useApi<{ profile: any; verification: any }>('/alumni/me');
   const meta = useApi<{ industries: string[]; departments: string[] }>('/meta');
   const tags = useApi<{ tags: Tag[] }>('/tags');
@@ -55,14 +55,36 @@ function Inner() {
 
   const tagsByCat = (tags.data?.tags ?? []).reduce<Record<string, Tag[]>>((acc, t) => ((acc[t.category ?? 'Other'] ??= []).push(t), acc), {});
 
+  const name = me?.user.name ?? p.name;
+  const verified = p.verificationStatus === 'verified';
+  const save_ = (
+    <button className="btn-primary px-5" onClick={save} disabled={busy}>
+      {busy && <Spinner />} Save profile
+    </button>
+  );
+
   return (
     <>
-      <PageHeader icon={ShieldCheck} eyebrow="Your mentor profile" title="Profile & verification" subtitle="Students see your professional profile — never your email, phone or LinkedIn." actions={<button className="btn-primary" onClick={save} disabled={busy}>{busy && <Spinner />} Save profile</button>} />
-      {welcome && <div className="mb-6 rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-900">Thanks for joining! Start by verifying your alumni status below, then complete your profile.</div>}
+      {welcome && <div className="mb-6 rounded-2xl bg-brand-50 px-5 py-4 text-[14px] text-brand-900">Thanks for joining! Start by verifying your alumni status below, then complete your profile.</div>}
       <ErrorBox message={err} />
-      <div className="mt-4 grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          {p.verificationStatus !== 'verified' && (
+      <div className="mt-2 grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="min-w-0 space-y-6">
+          <ProfileHeader
+            name={name}
+            headline={form.headline || 'Add a headline'}
+            verified={verified}
+            lines={[[form.currentRole, form.currentCompany].filter(Boolean).join(' at '), [form.city, form.industry].filter(Boolean).join(' · ')]}
+            note="This is how students see you. Your email, phone and LinkedIn are never shown to them."
+            actions={save_}
+            badges={
+              <>
+                <StatusBadge status={p.verificationStatus} />
+                {p.graduationYear && <span className="rounded-full bg-ink-900/[0.05] px-3 py-1 text-[12.5px] font-medium text-ink-600">Class of {p.graduationYear}</span>}
+              </>
+            }
+          />
+
+          {!verified && (
             <VerificationWizard
               v={data!.verification}
               departments={meta.data?.departments ?? []}
@@ -72,11 +94,20 @@ function Inner() {
               }}
             />
           )}
-          <Card title="Professional profile">
+
+          <ProfileSection title="About">
+            <Field label="Bio" hint="What you do, what you've learned, and how you like to mentor.">
+              <textarea className="input min-h-[140px]" value={form.bio} maxLength={2000} onChange={(e) => setForm({ ...form, bio: e.target.value })} />
+            </Field>
+          </ProfileSection>
+
+          <ProfileSection title="Experience">
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Headline">
-                <input className="input" value={form.headline} maxLength={140} onChange={(e) => setForm({ ...form, headline: e.target.value })} placeholder="Senior Data Scientist at Quantia AI" />
-              </Field>
+              <div className="sm:col-span-2">
+                <Field label="Headline">
+                  <input className="input" value={form.headline} maxLength={140} onChange={(e) => setForm({ ...form, headline: e.target.value })} placeholder="Senior Data Scientist at Quantia AI" />
+                </Field>
+              </div>
               <Field label="Current role">
                 <input className="input" value={form.currentRole} onChange={(e) => setForm({ ...form, currentRole: e.target.value })} />
               </Field>
@@ -98,24 +129,26 @@ function Inner() {
                 <input className="input" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
               </Field>
             </div>
-            <div className="mt-4">
-              <Field label="Bio">
-                <textarea className="input min-h-[120px]" value={form.bio} maxLength={2000} onChange={(e) => setForm({ ...form, bio: e.target.value })} />
-              </Field>
-            </div>
-          </Card>
-          <Card title="Expertise & mentoring">
-            <div className="space-y-5">
+          </ProfileSection>
+
+          {p.department && (
+            <ProfileSection title="Education">
+              <ProfileEntry icon={EducationIcon} title={[p.degree, p.department].filter(Boolean).join(', ')} subtitle={p.graduationYear ? `Class of ${p.graduationYear}` : null} meta={verified ? `Verified against institution records${p.verifiedAt ? ` on ${fmtDate(p.verifiedAt)}` : ''}` : 'From your verification record'} />
+            </ProfileSection>
+          )}
+
+          <ProfileSection title="Skills & mentoring">
+            <div className="space-y-6">
               <div>
                 <span className="label">How you can help</span>
                 <ChipToggle options={Object.entries(AREA_LABELS).map(([value, label]) => ({ value, label }))} value={form.mentoringAreas} onChange={(v) => setForm({ ...form, mentoringAreas: v })} />
               </div>
               <div>
-                <span className="label">Expertise tags (up to 15)</span>
-                <div className="space-y-2">
+                <span className="label">Expertise (up to 15)</span>
+                <div className="space-y-3">
                   {Object.entries(tagsByCat).map(([cat, ts]) => (
                     <div key={cat}>
-                      <div className="mb-1 text-xs font-medium text-ink-500">{cat}</div>
+                      <div className="mb-1.5 text-[12.5px] font-medium text-ink-500">{cat}</div>
                       <ChipToggle options={ts.map((t) => ({ value: t.id, label: t.name }))} value={form.expertise} onChange={(v) => setForm({ ...form, expertise: v })} max={15} />
                     </div>
                   ))}
@@ -125,60 +158,43 @@ function Inner() {
                 <input className="input" value={form.languages} onChange={(e) => setForm({ ...form, languages: e.target.value })} />
               </Field>
             </div>
-          </Card>
+          </ProfileSection>
         </div>
-        <div className="space-y-6">
-          <Card title="Status">
-            <dl className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-ink-500">Verification</dt>
-                <dd>
-                  <StatusBadge status={p.verificationStatus} />
-                </dd>
-              </div>
-              {p.verifiedAt && (
-                <div className="flex justify-between">
-                  <dt className="text-ink-500">Verified on</dt>
-                  <dd>{fmtDate(p.verifiedAt)}</dd>
-                </div>
-              )}
-              {p.department && (
-                <div className="flex justify-between gap-2">
-                  <dt className="text-ink-500">Record</dt>
-                  <dd className="text-right">
-                    {p.degree} {p.department}, {p.graduationYear}
-                  </dd>
-                </div>
-              )}
-            </dl>
-            <label className="mt-4 flex items-center gap-2 text-sm">
-              <input type="checkbox" className="rounded text-brand-600" checked={form.mentorOptIn} onChange={(e) => setForm({ ...form, mentorOptIn: e.target.checked })} />
-              Show me to students as a mentor
+
+        <aside className="space-y-6">
+          <ProfileSection title="Visibility">
+            <label className="flex items-start gap-3 text-[14px]">
+              <input type="checkbox" className="mt-0.5 rounded text-brand-600" checked={form.mentorOptIn} onChange={(e) => setForm({ ...form, mentorOptIn: e.target.checked })} />
+              <span>
+                <span className="font-medium">Show me to students as a mentor</span>
+                <span className="mt-0.5 block text-[13px] text-ink-500">Turn off to stop appearing in search. Current mentees are unaffected.</span>
+              </span>
             </label>
-          </Card>
+          </ProfileSection>
           <div id="fee" className="scroll-mt-24">
-            <Card title="Session fee">
+            <ProfileSection title="Session fee">
               <Field label="Price per session (₹)" hint={pay ? `0 means free. The programme allows up to ₹${pay.maxSessionFee}.` : '0 means free.'}>
                 <div className="relative">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-ink-500">₹</span>
+                  <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-ink-500">₹</span>
                   <input className="input pl-7 tabular-nums" inputMode="numeric" value={form.sessionFee} onChange={(e) => setForm({ ...form, sessionFee: e.target.value.replace(/[^0-9]/g, '').slice(0, 6) })} />
                 </div>
               </Field>
               {pay && Number(form.sessionFee) > 0 && (
-                <p className="mt-3 text-[12.5px] text-ink-500">
+                <p className="mt-3 text-[12.5px] leading-relaxed text-ink-500">
                   Students pay <span className="font-medium text-ink-800">{inr(Number(form.sessionFee) * 100)}</span> when they book; you receive{' '}
                   <span className="font-medium text-ink-800">{inr(Math.round(Number(form.sessionFee) * 100 * (1 - pay.platformFeePercent / 100)))}</span> after the {pay.platformFeePercent}% platform fee. Cancel a paid session and the student is refunded in full.
                 </p>
               )}
               {pay && !pay.enabled && <p className="mt-3 text-[12.5px] text-amber-800">Paid sessions are switched off for the programme right now, so sessions stay free.</p>}
-            </Card>
+            </ProfileSection>
           </div>
-          <Card title="Private (staff only)">
+          <ProfileSection title="Private (staff only)">
             <Field label="LinkedIn URL" hint="Visible only to Alumni Relations. Never shown to students.">
               <input className="input" value={form.linkedinUrl} onChange={(e) => setForm({ ...form, linkedinUrl: e.target.value })} placeholder="https://www.linkedin.com/in/…" />
             </Field>
-          </Card>
-        </div>
+          </ProfileSection>
+          <div className="lg:hidden">{save_}</div>
+        </aside>
       </div>
     </>
   );

@@ -47,7 +47,7 @@ function Confirm() {
   if (state === 'done') {
     return (
       <div className="text-[13.5px] text-ink-600">
-        <CheckCircle2 size={36} className="text-brand-500" />
+        <CheckCircle2 size={36} className="text-ok-500" />
         <p className="mt-3">Thanks, your email is confirmed. You now have full access.</p>
         <Link href={me ? homeFor(me.user.role) : '/login'} className="btn-primary mt-5 inline-flex">
           {me ? 'Continue' : 'Sign in'}

@@ -1,5 +1,6 @@
 'use client';
 import { Settings2 } from 'lucide-react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { DataRightsCard } from '@/components/DataRightsCard';
@@ -120,6 +121,13 @@ function Inner() {
       <div className="mt-6" id="your-data">
         <DataRightsCard />
       </div>
+      <p className="mt-8 text-center text-[13px] text-ink-500">
+        What other people can see about you is listed in the{' '}
+        <Link href="/privacy" className="link">
+          privacy statement
+        </Link>
+        .
+      </p>
     </>
   );
 }

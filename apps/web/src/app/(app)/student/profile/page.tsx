@@ -1,8 +1,9 @@
 'use client';
-import { UserRound } from 'lucide-react';
+import { Target } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
-import { Card, ChipToggle, ErrorBox, Field, Modal, PageHeader, PageLoader, Spinner, useToast } from '@/components/ui';
+import { ProfileEntry, ProfileHeader, ProfileSection } from '@/components/Profile';
+import { ChipToggle, ErrorBox, Field, Modal, PageLoader, Spinner, useToast } from '@/components/ui';
 import { del, post, put } from '@/lib/api';
 import { AREA_LABELS } from '@/lib/format';
 import { useApi } from '@/lib/hooks';
@@ -61,30 +62,49 @@ function ProfileInner() {
 
   const tagsByCat = (tags.data?.tags ?? []).reduce<Record<string, Tag[]>>((acc, t) => ((acc[t.category ?? 'Other'] ??= []).push(t), acc), {});
 
+  const name = data?.profile.name ?? 'You';
+  const headline = form.targetRoles.length ? `Aspiring ${form.targetRoles.slice(0, 2).join(' · ')}` : form.program || 'Student';
+  const save_ = (
+    <button className="btn-primary px-5" onClick={save} disabled={busy}>
+      {busy && <Spinner />} Save profile
+    </button>
+  );
+
   return (
     <>
-      <PageHeader icon={UserRound} eyebrow="Your profile" title="Career profile" subtitle="Mentors see this when you send a request. Your email and phone are never shown to mentors." actions={<button className="btn-primary" onClick={save} disabled={busy}>{busy && <Spinner />} Save profile</button>} />
-      {welcome && <div className="mb-6 rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-900">Welcome! Tell us what you are aiming for — your goals drive the mentor matches you&apos;ll see.</div>}
+      {welcome && <div className="mb-6 rounded-2xl bg-brand-50 px-5 py-4 text-[14px] text-brand-900">Welcome! Tell us what you are aiming for — your goals drive the mentor matches you&apos;ll see.</div>}
       <ErrorBox message={err} />
-      <div className="mt-4 grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <Card title="Career goals" actions={<button className="btn-secondary text-xs" onClick={() => setGoalModal({ timeframe: '1_year', priority: 2 })}>Add goal</button>}>
+      <div className="mt-2 grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="min-w-0 space-y-6">
+          <ProfileHeader
+            name={name}
+            headline={headline}
+            lines={[[form.program, form.department].filter(Boolean).join(', '), form.graduationYear && `Class of ${form.graduationYear}`]}
+            note="This is how mentors see you. Your email and phone are never shown."
+            actions={save_}
+          />
+
+          <ProfileSection title="About">
+            <Field label="Short bio" hint="A few lines about you and what you're working towards. Contact details are removed automatically.">
+              <textarea className="input min-h-[120px]" value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} maxLength={1500} />
+            </Field>
+          </ProfileSection>
+
+          <ProfileSection title="Career goals" action={<button className="btn-secondary px-3.5 py-1.5 text-[13px]" onClick={() => setGoalModal({ timeframe: '1_year', priority: 2 })}>Add goal</button>}>
             {goals.length === 0 ? (
-              <p className="muted">Add at least one goal — for example “Land a data scientist role at a fintech”.</p>
+              <p className="text-[14px] text-ink-500">Add at least one goal — for example “Land a data scientist role at a fintech”.</p>
             ) : (
-              <ul className="divide-y divide-ink-100">
+              <ul className="divide-y divide-[color:var(--line)]">
                 {goals.map((g) => (
-                  <li key={g.id} className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0">
-                    <div>
-                      <div className="font-medium">{g.title}</div>
-                      <div className="text-xs text-ink-500">{[g.targetRole, g.targetIndustry, TIMEFRAMES[g.timeframe]].filter(Boolean).join(' · ')}</div>
-                      {g.description && <p className="mt-1 text-sm text-ink-600">{g.description}</p>}
-                    </div>
-                    <div className="flex gap-1">
-                      <button className="btn-ghost text-xs" onClick={() => setGoalModal(g)}>
+                  <li key={g.id} className="flex items-start justify-between gap-3 py-4 first:pt-0 last:pb-0">
+                    <ProfileEntry icon={Target} title={g.title} subtitle={[g.targetRole, g.targetIndustry].filter(Boolean).join(' · ') || null} meta={TIMEFRAMES[g.timeframe] ? `Within ${TIMEFRAMES[g.timeframe]}` : null}>
+                      {g.description && <p className="mt-1.5 text-[14px] text-ink-600">{g.description}</p>}
+                    </ProfileEntry>
+                    <div className="flex shrink-0 gap-1">
+                      <button className="btn-ghost px-2.5 py-1 text-[12.5px]" onClick={() => setGoalModal(g)}>
                         Edit
                       </button>
-                      <button className="btn-ghost text-xs text-red-700" onClick={async () => (await del(`/students/me/goals/${g.id}`), reload())}>
+                      <button className="btn-ghost px-2.5 py-1 text-[12.5px] text-red-600" onClick={async () => (await del(`/students/me/goals/${g.id}`), reload())}>
                         Remove
                       </button>
                     </div>
@@ -92,12 +112,12 @@ function ProfileInner() {
                 ))}
               </ul>
             )}
-          </Card>
+          </ProfileSection>
 
-          <Card title="What you're aiming for">
-            <div className="space-y-5">
+          <ProfileSection title="What you're aiming for">
+            <div className="space-y-6">
               <Field label="Target roles" hint="Press Enter to add. Up to 6.">
-                <div className="flex flex-wrap gap-1.5 rounded-lg border border-ink-200 p-2">
+                <div className="flex flex-wrap gap-1.5 rounded-xl border border-[color:var(--line-strong)] bg-surface p-2">
                   {form.targetRoles.map((r: string) => (
                     <span key={r} className="chip chip-active">
                       {r}
@@ -107,7 +127,7 @@ function ProfileInner() {
                     </span>
                   ))}
                   <input
-                    className="min-w-[10rem] flex-1 border-0 p-1 text-sm focus:outline-none"
+                    className="min-w-[10rem] flex-1 border-0 bg-transparent p-1 text-sm focus:outline-none"
                     placeholder="e.g. Data Scientist"
                     value={roleInput}
                     onChange={(e) => setRoleInput(e.target.value)}
@@ -129,42 +149,49 @@ function ProfileInner() {
                 <span className="label">Help you&apos;re looking for</span>
                 <ChipToggle options={Object.entries(AREA_LABELS).map(([value, label]) => ({ value, label }))} value={form.mentoringAreasWanted} onChange={(v) => setForm({ ...form, mentoringAreasWanted: v })} />
               </div>
-              <div>
-                <span className="label">Interests & skills</span>
-                <div className="space-y-2">
-                  {Object.entries(tagsByCat).map(([cat, ts]) => (
-                    <div key={cat}>
-                      <div className="mb-1 text-xs font-medium text-ink-500">{cat}</div>
-                      <ChipToggle options={ts.map((t) => ({ value: t.id, label: t.name }))} value={form.interests} onChange={(v) => setForm({ ...form, interests: v })} max={15} />
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
-          </Card>
+          </ProfileSection>
+
+          <ProfileSection title="Skills & interests">
+            <div className="space-y-4">
+              {Object.entries(tagsByCat).map(([cat, ts]) => (
+                <div key={cat}>
+                  <div className="mb-1.5 text-[12.5px] font-medium text-ink-500">{cat}</div>
+                  <ChipToggle options={ts.map((t) => ({ value: t.id, label: t.name }))} value={form.interests} onChange={(v) => setForm({ ...form, interests: v })} max={15} />
+                </div>
+              ))}
+            </div>
+          </ProfileSection>
         </div>
 
-        <Card title="About you">
-          <div className="space-y-4">
-            <Field label="Programme">
-              <input className="input" value={form.program} onChange={(e) => setForm({ ...form, program: e.target.value })} placeholder="B.Tech Computer Science" />
-            </Field>
-            <Field label="Department">
-              <select className="input" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })}>
-                <option value="">Select…</option>
-                {(meta.data?.departments ?? []).map((d) => (
-                  <option key={d}>{d}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Graduation year">
-              <input className="input" type="number" value={form.graduationYear} onChange={(e) => setForm({ ...form, graduationYear: e.target.value })} />
-            </Field>
-            <Field label="Short bio" hint="Contact details are removed automatically.">
-              <textarea className="input min-h-[120px]" value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} maxLength={1500} />
-            </Field>
+        <aside className="space-y-6">
+          <ProfileSection title="Education">
+            <div className="space-y-4">
+              <Field label="Programme">
+                <input className="input" value={form.program} onChange={(e) => setForm({ ...form, program: e.target.value })} placeholder="B.Tech Computer Science" />
+              </Field>
+              <Field label="Department">
+                <select className="input" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })}>
+                  <option value="">Select…</option>
+                  {(meta.data?.departments ?? []).map((d) => (
+                    <option key={d}>{d}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Graduation year">
+                <input className="input" type="number" value={form.graduationYear} onChange={(e) => setForm({ ...form, graduationYear: e.target.value })} />
+              </Field>
+            </div>
+          </ProfileSection>
+          <div className="card p-6">
+            <p className="text-[14px] font-semibold">Profile tips</p>
+            <ul className="mt-3 space-y-2 text-[13.5px] leading-relaxed text-ink-500">
+              <li>Mentors are matched on your goals, target roles and interests — the more specific, the better.</li>
+              <li>Three or more interests noticeably improves your matches.</li>
+            </ul>
+            <div className="mt-5">{save_}</div>
           </div>
-        </Card>
+        </aside>
       </div>
 
       <Modal open={!!goalModal} onClose={() => setGoalModal(null)} title={goalModal?.id ? 'Edit goal' : 'Add a career goal'} footer={<><button className="btn-secondary" onClick={() => setGoalModal(null)}>Cancel</button><button className="btn-primary" onClick={saveGoal} disabled={!goalModal?.title || goalModal.title.length < 3}>Save goal</button></>}>

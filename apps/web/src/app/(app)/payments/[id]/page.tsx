@@ -39,7 +39,7 @@ export default function ReceiptPage() {
       </div>
 
       <article className="card overflow-hidden !p-0 print:shadow-none">
-        <header className="flex flex-wrap items-start justify-between gap-4 border-b border-[color:var(--line)] bg-gradient-to-br from-brand-50 to-transparent px-6 py-5">
+        <header className="flex flex-wrap items-start justify-between gap-4 border-b border-[color:var(--line)] px-6 py-5">
           <Logo compact />
           <div className="text-right">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-400">Receipt</p>

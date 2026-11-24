@@ -9,6 +9,8 @@ const nextConfig = {
   reactStrictMode: true,
   outputFileTracingRoot: repoRoot,
   poweredByHeader: false,
+  // Dev-only 'N' badge: bottom-left would sit on the sidebar's account row and controls.
+  devIndicators: { position: 'bottom-right' },
   // Same-origin API: the browser talks to /api on the web origin, Next proxies to the API server.
   async rewrites() {
     return [{ source: '/api/:path*', destination: `${API}/api/:path*` }];

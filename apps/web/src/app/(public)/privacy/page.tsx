@@ -1,6 +1,7 @@
-import Link from 'next/link';
 
-export const metadata = { title: 'Privacy statement' };
+import { SiteFooter } from '@/components/SiteFooter';
+
+export const metadata = { title: 'Privacy statement', description: 'Exactly what other people can see about you on Alumni Mentor Network, and what they never can.' };
 
 const STUDENT_VISIBLE = [
   ['Name', 'Full name as registered'],
@@ -21,12 +22,9 @@ const NEVER = ['Email address', 'Phone number', 'LinkedIn or other social profil
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-surface">
-      <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-        <Link href="/" className="text-sm text-brand-700">
-          ← Alumni Mentor Network
-        </Link>
-        <h1 className="mt-4 text-3xl font-semibold tracking-tight">Privacy statement</h1>
+    <div className="min-h-screen bg-canvas">
+      <div className="mx-auto max-w-3xl px-5 py-14 sm:px-6 sm:py-20">
+        <h1 className="text-[40px] font-semibold leading-[1.05] tracking-[-0.04em] sm:text-[52px]">Privacy statement</h1>
         <p className="mt-3 text-ink-600">
           This page lists every piece of alumni information a student can see on the platform. It is written for the alumni relations office to check without reading code. The authoritative copy is <code>docs/PRIVACY.md</code> in the project repository, and it is enforced by automated tests that call every endpoint as a student.
         </p>
@@ -71,6 +69,7 @@ export default function PrivacyPage() {
         <h2 className="mt-10 text-xl font-semibold">6. Who can see contact details</h2>
         <p className="mt-2 text-ink-600">Only Alumni Relations Officers and Administrators, for verification and programme administration. Placement officers see aggregate analytics only. Every view of a verification document is recorded in the audit log. Documents are kept in private storage and are never publicly linked, and staff accounts sign in with two-factor authentication.</p>
       </div>
+      <SiteFooter />
     </div>
   );
 }

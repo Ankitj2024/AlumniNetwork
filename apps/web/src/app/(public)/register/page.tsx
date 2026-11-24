@@ -6,7 +6,7 @@ import { ErrorBox, Field, Spinner, cx } from '@/components/ui';
 import { post } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { AuthFrame } from '@/components/AuthFrame';
-import { GoogleButton, OrDivider } from '@/components/GoogleButton';
+import { GoogleButton } from '@/components/GoogleButton';
 import { motion } from 'framer-motion';
 
 function RegisterForm() {
@@ -47,7 +47,6 @@ function RegisterForm() {
         ))}
       </div>
       <GoogleButton role={role} label={role === 'student' ? 'Sign up with Google' : 'Sign up with Google as alumnus'} />
-      <OrDivider />
       {role === 'alumnus' && <p className="rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-800">After signing up you&apos;ll verify your alumni status against institutional records. Students can only find you once you&apos;re verified, and you choose how many mentees to take.</p>}
       <ErrorBox message={error} />
       <Field label="Full name" error={fieldErrors.name?.[0]}>

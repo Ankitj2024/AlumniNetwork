@@ -2,13 +2,15 @@
 import { motion } from 'framer-motion';
 import { ArrowRight, CalendarClock, Clock, Compass, Send, Sparkles, UserRound, Video } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { MentorCard } from '@/components/MentorCard';
-import { Ring, Stagger, StaggerItem, Tilt } from '@/components/motion';
-import ShinyText from '@/components/reactbits/ShinyText';
+import { Ring, Stagger, StaggerItem } from '@/components/motion';
+import TearTicket from '@/components/ui/tear-ticket';
 import { Avatar, Card, EmptyState, LinkButton, PageLoader, Stat, StatusBadge, useToast } from '@/components/ui';
 import { post } from '@/lib/api';
 import { fmtDateTime, relTime } from '@/lib/format';
 import { useApi } from '@/lib/hooks';
+import { useTheme } from '@/lib/theme';
 import type { Mentor, MentorshipRequest, Mentorship } from '@/lib/types';
 
 /** Profile strength drives match quality, so we show it and nudge towards completing it. */
@@ -29,6 +31,8 @@ function strength(p: any): { pct: number; missing: string[] } {
 
 export default function StudentHome() {
   const toast = useToast();
+  const router = useRouter();
+  const dark = useTheme().theme === 'dark';
   const profile = useApi<{ profile: any; throttle: any }>('/students/me');
   const ms = useApi<{ mentorships: Mentorship[] }>('/mentorships');
   const reqs = useApi<{ requests: MentorshipRequest[] }>('/requests');
@@ -70,48 +74,78 @@ export default function StudentHome() {
   const HeroIcon = hero.icon;
   return (
     <>
-      <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-        <p className="eyebrow mb-1.5">{new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-        <h1 className="h1">
-          Good to see you, <span className="bg-gradient-to-r from-brand-600 to-iris-500 bg-clip-text text-transparent">{first}</span>
-        </h1>
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }} className="mb-8">
+        <p className="mb-1.5 text-[14px] font-medium text-ink-500">{new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+        <h1 className="h1">Good to see you, {first}.</h1>
       </motion.div>
 
-      {/* hero: next best action */}
-      <Tilt max={3} glare className="mb-6 rounded-3xl">
-        <div className="relative overflow-hidden rounded-3xl bg-night p-6 text-white shadow-depth ring-1 ring-white/[0.06] sm:p-8">
-          <div aria-hidden className="absolute -right-16 -top-24 h-72 w-72 animate-aurora rounded-full bg-brand-500/40 blur-3xl" />
-          <div aria-hidden className="absolute -bottom-24 right-24 h-64 w-64 animate-aurora-slow rounded-full bg-iris-500/40 blur-3xl" />
-          <div aria-hidden className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,.07)_1px,transparent_1px)] [background-size:20px_20px]" />
-          <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-            <div className="max-w-xl" style={{ transform: 'translateZ(30px)' }}>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] px-3 py-1 backdrop-blur">
-                <HeroIcon size={13} className="text-brand-300" />
-                <ShinyText text={hero.kicker} color="#a6f0d9" shineColor="#ffffff" speed={2.6} className="text-[11px] font-semibold uppercase tracking-[0.12em]" />
-              </div>
-              <h2 className="text-[22px] font-semibold leading-tight tracking-[-0.02em] sm:text-[26px]">{hero.title}</h2>
-              <p className="mt-2 text-[14px] text-white/70">{hero.body}</p>
-              <Link href={hero.href} className="btn mt-5 bg-white px-4 py-2.5 text-night shadow-lg hover:bg-[#eefbf7]">
-                {hero.cta} <ArrowRight size={15} />
-              </Link>
-            </div>
-            <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.05] p-4 backdrop-blur" style={{ transform: 'translateZ(50px)' }}>
-              <div className="rounded-full bg-white p-1">
-                <Ring value={pct} label="profile" size={64} />
-              </div>
-              <div className="text-[13px]">
-                <div className="font-semibold">Profile strength</div>
-                <div className="text-white/60">{pct === 100 ? 'Complete — great matches ahead' : `${missing.length} thing${missing.length === 1 ? '' : 's'} to add`}</div>
-                {pct < 100 && (
-                  <Link href="/student/profile" className="mt-1 inline-flex items-center gap-1 text-brand-300 hover:text-brand-200">
-                    Improve <ArrowRight size={12} />
-                  </Link>
-                )}
-              </div>
+      {/* hero: the next best action */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.05, ease: [0.22, 1, 0.36, 1] }} className="card mb-6 p-6 sm:p-8">
+        <div className="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
+          <div className="max-w-xl">
+            <p className="flex items-center gap-1.5 text-[13px] font-semibold text-brand-700">
+              <HeroIcon size={14} /> {hero.kicker}
+            </p>
+            <h2 className="mt-2 text-[24px] font-semibold leading-tight tracking-[-0.03em] sm:text-[28px]">{hero.title}</h2>
+            <p className="mt-2 text-[15px] leading-relaxed text-ink-500">{hero.body}</p>
+            <Link href={hero.href} className="btn-primary mt-6 px-5 py-2.5">
+              {hero.cta}
+            </Link>
+          </div>
+          <div className="flex items-center gap-4 sm:flex-col sm:text-center">
+            <Ring value={pct} label="profile" size={84} />
+            <div className="text-[13px]">
+              <div className="font-semibold">Profile strength</div>
+              <div className="text-ink-500">{pct === 100 ? 'Complete' : `${missing.length} thing${missing.length === 1 ? '' : 's'} to add`}</div>
+              {pct < 100 && (
+                <Link href="/student/profile" className="link mt-1 inline-block">
+                  Improve
+                </Link>
+              )}
             </div>
           </div>
         </div>
-      </Tilt>
+      </motion.div>
+
+      {/* the next session as a pass: tearing the stub opens the session (navigation only) */}
+      {nextSession && (
+        <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }} className="mb-8 flex flex-col items-center rounded-[22px] bg-ink-900/[0.03] px-4 py-8" aria-label="Your next session">
+          <div className="w-full max-w-[480px] drop-shadow-[0_24px_40px_rgba(0,0,0,0.12)] dark:drop-shadow-[0_24px_40px_rgba(0,0,0,0.6)]">
+            <TearTicket
+              width={480}
+              height={220}
+              stubSize={140}
+              radius={20}
+              rotate={-2}
+              tiltMax={6}
+              background={dark ? '#1c1c1e' : '#ffffff'}
+              color={dark ? '#f5f5f7' : '#1d1d1f'}
+              ariaLabel={`Tear the stub to open your session with ${nextSession.mentor.name}`}
+              onTear={() => router.push(`/mentorships/${nextSession.id}?tab=sessions`)}
+              stub={
+                <div className="flex h-full flex-col items-center justify-center gap-1 px-3 text-center">
+                  <span className="text-[10.5px] font-semibold uppercase tracking-[0.12em] opacity-50">Admit one</span>
+                  <span className="text-[20px] font-semibold tracking-[-0.03em]">Open</span>
+                  <span className="mt-2 text-[11px] opacity-50">Pull to tear ›</span>
+                </div>
+              }
+            >
+              <div className="flex h-full flex-col justify-between p-6">
+                <div>
+                  <span className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-brand-600 dark:text-[#2997ff]">Next session · {relTime(nextSession.nextSessionAt)}</span>
+                  <p className="mt-2 truncate text-[22px] font-semibold leading-tight tracking-[-0.03em]">{nextSession.mentor.name}</p>
+                  <p className="mt-1 truncate text-[13px] opacity-60">{nextSession.mentor.headline}</p>
+                </div>
+                <div className="text-[12px]">
+                  <div className="opacity-45">When</div>
+                  <div className="mt-0.5 font-semibold">{fmtDateTime(nextSession.nextSessionAt)}</div>
+                </div>
+              </div>
+            </TearTicket>
+          </div>
+          <p className="mt-5 text-[13px] text-ink-500">The video link and calendar file are on the session page.</p>
+        </motion.section>
+      )}
 
       {t && (
         <Stagger className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -147,7 +181,7 @@ export default function StudentHome() {
                       </div>
                       <ArrowRight size={16} className="text-ink-300 transition group-hover:translate-x-0.5 group-hover:text-ink-600" />
                     </div>
-                    <div className="mt-3 flex items-center justify-between rounded-xl bg-ink-50 px-3 py-2 text-[12px]">
+                    <div className="mt-3 flex items-center justify-between rounded-xl bg-ink-900/[0.04] px-3 py-2 text-[12px]">
                       <span className="flex items-center gap-1.5 text-ink-600">
                         <CalendarClock size={13} /> {m.nextSessionAt ? fmtDateTime(m.nextSessionAt) : 'No session booked'}
                       </span>
@@ -166,7 +200,7 @@ export default function StudentHome() {
               <ol className="relative space-y-4 border-l border-[color:var(--line-strong)] pl-5">
                 {recent.map((r) => (
                   <li key={r.id} className="relative">
-                    <span className={`absolute -left-[26px] top-1 h-3 w-3 rounded-full ring-4 ring-surface ${r.status === 'accepted' ? 'bg-brand-500' : r.status === 'pending' ? 'bg-amber-400' : 'bg-ink-300'}`} />
+                    <span className={`absolute -left-[26px] top-1 h-3 w-3 rounded-full ring-4 ring-surface ${r.status === 'accepted' ? 'bg-ok-400' : r.status === 'pending' ? 'bg-amber-400' : 'bg-ink-300'}`} />
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
@@ -196,7 +230,7 @@ export default function StudentHome() {
         <div>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="h2 flex items-center gap-1.5">
-              <Sparkles size={15} className="text-brand-600" /> Top matches
+              <Sparkles size={15} className="text-ink-400" /> Top matches
             </h2>
             <Link href="/mentors" className="text-[13px] font-medium text-brand-700">
               See all

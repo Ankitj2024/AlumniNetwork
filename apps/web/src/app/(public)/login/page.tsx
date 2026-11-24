@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useRef, useState } from 'react';
 import { AuthFrame } from '@/components/AuthFrame';
-import { GOOGLE_ERRORS, GoogleButton, OrDivider } from '@/components/GoogleButton';
+import { GOOGLE_ERRORS, GoogleButton } from '@/components/GoogleButton';
 import { CodeInput } from '@/components/TwoFactorSetup';
 import { ErrorBox, Field, Spinner, useToast } from '@/components/ui';
 import { post } from '@/lib/api';
@@ -186,7 +186,6 @@ function LoginForm() {
       <div className={error ? 'mt-4' : ''}>
         <GoogleButton role="student" next={next} />
       </div>
-      <OrDivider />
       <form onSubmit={submit} className="space-y-4">
         <Field label="Email">
           <input className="input" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />

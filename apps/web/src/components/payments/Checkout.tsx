@@ -119,7 +119,7 @@ export function Checkout({ session, open, onClose, onPaid }: { session: SessionT
         customer_id: c.customerId ?? undefined,
         save: 1, // offer "save this card" (RBI-compliant tokenisation by Razorpay)
         prefill: c.prefill,
-        theme: { color: '#1fa388' },
+        theme: { color: '#0071e3' },
         handler: async (resp: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
           setBusy(true);
           try {
@@ -222,7 +222,7 @@ export function Checkout({ session, open, onClose, onPaid }: { session: SessionT
       <AnimatePresence mode="wait" initial={false}>
         {done ? (
           <motion.div key="done" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="py-4 text-center">
-            <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 380, damping: 18, delay: 0.05 }} className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-brand-50 text-brand-600 ring-1 ring-inset ring-brand-200">
+            <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 380, damping: 18, delay: 0.05 }} className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-ok-50 text-ok-600">
               <CheckCircle2 size={30} />
             </motion.span>
             <p className="mt-3 text-[15px] font-semibold text-ink-900">Your session is confirmed</p>
