@@ -3,7 +3,8 @@ import { ShieldCheck } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Modal, Spinner, cx, useToast } from '@/components/ui';
 import { post } from '@/lib/api';
-import { detectNetwork, digits, formatCard, luhn, NETWORK_LABEL, parseExpiry, type PaymentConfig, type SavedMethod } from '@/lib/payments';
+import { detectNetwork, digits, luhn, parseExpiry, type PaymentConfig, type SavedMethod } from '@/lib/payments';
+import { CardNumberField, CvvField, ExpiryField } from './CardFields';
 
 const FINISHES: { id: SavedMethod['finish']; label: string; swatch: string }[] = [
   { id: 'metal', label: 'Metal', swatch: 'conic-gradient(from 20deg at 60% 45%, #d6d8dc, #f6f7f8, #c4c7cc, #eef0f2, #cdd0d4, #f8f8f9, #d6d8dc)' },
@@ -85,32 +86,10 @@ export function AddCardModal({ open, onClose, onAdded, config, holderName }: { o
         </div>
       ) : (
         <div className="space-y-3">
-          <label className="block">
-            <span className="label">Card number</span>
-            <div className="relative">
-              <input className="input pr-24 font-mono tracking-wider" inputMode="numeric" autoComplete="cc-number" placeholder="4242 4242 4242 4242" value={f.number} onChange={(e) => setF({ ...f, number: formatCard(e.target.value) })} />
-              {digits(f.number).length >= 2 && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold uppercase tracking-wide text-ink-500">{NETWORK_LABEL[network]}</span>}
-            </div>
-            {digits(f.number).length >= 12 && errors.number && <span className="mt-1 block text-[12px] text-red-700">{errors.number}</span>}
-          </label>
+          <CardNumberField value={f.number} onChange={(number) => setF({ ...f, number })} />
           <div className="grid grid-cols-3 gap-3">
-            <label className="block">
-              <span className="label">Expiry</span>
-              <input
-                className="input font-mono"
-                inputMode="numeric"
-                placeholder="MM/YY"
-                value={f.exp}
-                onChange={(e) => {
-                  const d = digits(e.target.value).slice(0, 4);
-                  setF({ ...f, exp: d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d });
-                }}
-              />
-            </label>
-            <label className="block">
-              <span className="label">CVV</span>
-              <input className="input font-mono" type="password" inputMode="numeric" placeholder="•••" value={f.cvv} onChange={(e) => setF({ ...f, cvv: digits(e.target.value).slice(0, 4) })} />
-            </label>
+            <ExpiryField value={f.exp} onChange={(exp) => setF({ ...f, exp })} />
+            <CvvField value={f.cvv} onChange={(cvv) => setF({ ...f, cvv })} />
             <label className="block">
               <span className="label">Type</span>
               <select className="input" value={f.cardType} onChange={(e) => setF({ ...f, cardType: e.target.value as SavedMethod['cardType'] })}>

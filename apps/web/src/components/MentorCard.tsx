@@ -25,6 +25,8 @@ export function MentorCard({ m, topMatch = false }: { m: Mentor; topMatch?: bool
   const more = m.expertise.length - tags.length;
   const area = m.mentoringAreas[0];
   const showFee = !!pay?.enabled && m.sessionFee !== undefined;
+  // What a booking would actually charge: the mentor's fee, capped by the programme's maximum.
+  const fee = showFee ? Math.min(m.sessionFee!, pay!.maxSessionFee) : 0;
 
   return (
     <Tilt className="group h-full rounded-3xl" max={3} glare={false} scale={1.008}>
@@ -127,9 +129,9 @@ export function MentorCard({ m, topMatch = false }: { m: Mentor; topMatch?: bool
               <span className="ml-auto flex items-center gap-2 whitespace-nowrap">
                 {showFee && (
                   <span className="text-[13px] font-semibold tabular-nums text-ink-900">
-                    {m.sessionFee! > 0 ? (
+                    {fee > 0 ? (
                       <>
-                        {inr(m.sessionFee! * 100)}
+                        {inr(fee * 100)}
                         <span className="text-[12px] font-normal text-ink-500">/session</span>
                       </>
                     ) : (

@@ -2,6 +2,7 @@
 import { Settings2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
+import { DataRightsCard } from '@/components/DataRightsCard';
 import { SecurityCard } from '@/components/SecurityCard';
 import { ThemePicker } from '@/components/ThemeToggle';
 import { Badge, Card, Field, PageHeader, PageLoader, Spinner, useToast } from '@/components/ui';
@@ -115,6 +116,9 @@ function Inner() {
       </div>
       <div className="mt-8" id="security">
         <SecurityCard />
+      </div>
+      <div className="mt-6" id="your-data">
+        <DataRightsCard />
       </div>
     </>
   );

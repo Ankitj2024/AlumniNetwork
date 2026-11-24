@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Spinner, cx } from '@/components/ui';
 import { ApiError, get, post } from '@/lib/api';
-import { detectNetwork, digits, formatCard, inr, luhn, NETWORK_LABEL, parseExpiry, type SavedMethod } from '@/lib/payments';
+import { detectNetwork, digits, inr, luhn, NETWORK_LABEL, parseExpiry, type SavedMethod } from '@/lib/payments';
+import { CardNumberField, CvvField, ExpiryField } from './CardFields';
 import type { SessionT } from '@/lib/types';
 
 type CheckoutData = {
@@ -305,33 +306,10 @@ export function Checkout({ session, open, onClose, onPaid }: { session: SessionT
 
                 {tab === 'card' && (
                   <div className="mt-3 space-y-3">
-                    <label className="block">
-                      <span className="label">Card number</span>
-                      <div className="relative">
-                        <input className="input pr-24 font-mono tracking-wider" inputMode="numeric" autoComplete="cc-number" placeholder="4242 4242 4242 4242" value={card.number} onChange={(e) => setCard({ ...card, number: formatCard(e.target.value) })} />
-                        {digits(card.number).length >= 2 && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold uppercase tracking-wide text-ink-500">{NETWORK_LABEL[network]}</span>}
-                      </div>
-                      {card.number && cardErrors.number && digits(card.number).length >= 12 && <span className="mt-1 block text-[12px] text-red-700">{cardErrors.number}</span>}
-                    </label>
+                    <CardNumberField value={card.number} onChange={(number) => setCard({ ...card, number })} />
                     <div className="grid grid-cols-2 gap-3">
-                      <label className="block">
-                        <span className="label">Expiry</span>
-                        <input
-                          className="input font-mono"
-                          inputMode="numeric"
-                          autoComplete="cc-exp"
-                          placeholder="MM/YY"
-                          value={card.exp}
-                          onChange={(e) => {
-                            const d = digits(e.target.value).slice(0, 4);
-                            setCard({ ...card, exp: d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d });
-                          }}
-                        />
-                      </label>
-                      <label className="block">
-                        <span className="label">CVV</span>
-                        <input className="input font-mono" inputMode="numeric" autoComplete="cc-csc" type="password" placeholder="•••" value={card.cvv} onChange={(e) => setCard({ ...card, cvv: digits(e.target.value).slice(0, 4) })} />
-                      </label>
+                      <ExpiryField value={card.exp} onChange={(exp) => setCard({ ...card, exp })} />
+                      <CvvField value={card.cvv} onChange={(cvv) => setCard({ ...card, cvv })} />
                     </div>
                     <label className="block">
                       <span className="label">Name on card</span>

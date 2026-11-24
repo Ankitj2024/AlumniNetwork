@@ -165,8 +165,8 @@ r.post(
   requireRole('admin', 'aro'),
   ah(async (req, res) => {
     const b = parse(z.object({ reason: z.string().trim().max(200).optional() }), req.body ?? {});
-    const { payment, refund } = await staffRefund(req.viewer!, String(oid(req.params.id, 'Payment')), b.reason ?? '');
-    res.json({ payment: paymentView(payment.toObject(), req.viewer!), refund });
+    const { payment, refund, sessionCancelled } = await staffRefund(req.viewer!, String(oid(req.params.id, 'Payment')), b.reason ?? '');
+    res.json({ payment: paymentView(payment.toObject(), req.viewer!), refund, sessionCancelled });
   }),
 );
 

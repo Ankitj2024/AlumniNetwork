@@ -6,6 +6,7 @@ import { badRequest, notFound } from '../lib/errors.js';
 import { sniffDocumentType } from '../lib/filetype.js';
 import { logger } from '../lib/logger.js';
 import { maskContactDetails } from '../lib/mask.js';
+import { escapeRegex } from '../lib/regex.js';
 import { requireRole, requireVerifiedEmail } from '../middleware/auth.js';
 import { ah, oid, parse } from '../middleware/common.js';
 import { Alumnus, AvailabilityWindow, DEPARTMENTS, InstitutionRecord, MENTORING_AREAS, MentorCapacity, User, VerificationRequest } from '../models/index.js';
@@ -272,7 +273,7 @@ r.get(
   requireRole('aro', 'admin'),
   ah(async (req, res) => {
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
-    const filter = q ? { $or: [{ rollNumber: q.toUpperCase() }, { normalizedName: { $regex: normalizeName(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') } }] } : {};
+    const filter = q ? { $or: [{ rollNumber: q.toUpperCase() }, { normalizedName: { $regex: escapeRegex(normalizeName(q)) } }] } : {};
     const [records, total] = await Promise.all([InstitutionRecord.find(filter).sort({ graduationYear: -1 }).limit(100).lean(), InstitutionRecord.countDocuments()]);
     res.json({
       total,

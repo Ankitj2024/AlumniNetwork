@@ -288,11 +288,15 @@ function StaffPayments() {
   const shown = filter === 'all' ? rows : rows.filter((r) => r.status === filter);
 
   async function refund(p: PaymentRow) {
-    const reason = window.prompt(`Refund ${inr(p.amount)} to ${p.studentName}? Reason (shown to the student):`, 'Refunded by the alumni office');
+    const upcoming = !!p.sessionStart && new Date(p.sessionStart).getTime() > Date.now();
+    const reason = window.prompt(
+      `Refund ${inr(p.amount)} to ${p.studentName}?${upcoming ? ' The session has not happened yet, so it will be cancelled too.' : ''} Reason (shown to the student):`,
+      'Refunded by the alumni office',
+    );
     if (reason === null) return;
     try {
-      await post(`/payments/${p.id}/refund`, { reason });
-      toast('Refund issued');
+      const r = await post<{ sessionCancelled?: boolean }>(`/payments/${p.id}/refund`, { reason });
+      toast(r.sessionCancelled ? 'Refund issued and the session cancelled' : 'Refund issued');
       hist.reload();
     } catch (e: any) {
       toast(e.message, 'err');

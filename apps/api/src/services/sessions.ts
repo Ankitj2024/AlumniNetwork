@@ -1,11 +1,11 @@
 import { env } from '../config/env.js';
 import { HOUR_MS, type Clock, systemClock } from '../lib/clock.js';
 import { badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
-import { CalendarConnection, Mentorship, Session } from '../models/index.js';
+import { CalendarConnection, Mentorship, Payment, Session } from '../models/index.js';
 import type { Viewer } from '../serializers/index.js';
 import { mentorshipAccess, touchMentorship, type MentorshipAccess } from './access.js';
 import { audit } from './audit.js';
-import { failOpenPayments, refundOnCancel, rupees, sessionFeeFor } from './payments.js';
+import { failOpenPayments, refundOnCancel, refundPayment, rupees, sessionFeeFor } from './payments.js';
 import { createExternalEvent, deleteExternalEvent, jitsiLink, type Provider } from './calendar.js';
 import { notify } from './notify.js';
 
@@ -24,18 +24,21 @@ function validateSlots(slots: Slot[], now: Date) {
   }
 }
 
-/** Mentor's time is protected: no two scheduled sessions may overlap across all their mentorships. */
-async function assertNoMentorClash(alumnusId: unknown, slot: Slot, excludeSessionId?: unknown) {
+/** Sessions that already hold the mentor's time (booked or held for payment) and overlap this slot. */
+async function mentorBookingsOverlapping(alumnusId: unknown, slot: Slot, excludeSessionId: unknown) {
   const ms = await Mentorship.find({ alumnus: alumnusId }).select('_id').lean();
-  const clash = await Session.findOne({
+  return Session.find({
     mentorship: { $in: ms.map((m) => m._id) },
     status: { $in: ['scheduled', 'awaiting_payment'] },
     _id: { $ne: excludeSessionId },
     scheduledStart: { $lt: slot.end },
     scheduledEnd: { $gt: slot.start },
-  }).lean();
-  if (clash) throw conflict('slot_clash', 'The mentor already has a session booked at that time');
+  })
+    .select('_id bookedAt')
+    .lean();
 }
+
+const SLOT_CLASH = 'The mentor already has a session booked at that time';
 
 export async function proposeSession(viewer: Viewer, mentorshipId: string, input: { slots: Slot[]; title?: string; agenda?: string }, clock: Clock = systemClock) {
   const acc = await mentorshipAccess(viewer, mentorshipId, { write: true });
@@ -60,31 +63,48 @@ export async function proposeSession(viewer: Viewer, mentorshipId: string, input
 
 export async function bookSession(viewer: Viewer, mentorshipId: string, sessionId: string, slotIndex: number, clock: Clock = systemClock) {
   const acc = await mentorshipAccess(viewer, mentorshipId, { write: true });
-  const s = await Session.findOne({ _id: sessionId, mentorship: acc.mentorship._id });
-  if (!s) throw notFound('Session');
-  if (s.status !== 'proposed') throw conflict('not_proposed', 'This session is not awaiting a booking');
-  if (String(s.proposedBy) === viewer.id) throw forbidden('The other participant picks a slot from your proposal');
-  const slot = s.proposedSlots[slotIndex];
+  if (acc.mentorship.status !== 'active') throw conflict('not_active', 'This mentorship has ended, so its sessions can no longer be booked');
+  const found = await Session.findOne({ _id: sessionId, mentorship: acc.mentorship._id }).lean();
+  if (!found) throw notFound('Session');
+  if (found.status !== 'proposed') throw conflict('not_proposed', 'This session is not awaiting a booking');
+  if (String(found.proposedBy) === viewer.id) throw forbidden('The other participant picks a slot from your proposal');
+  const slot = found.proposedSlots[slotIndex];
   if (!slot?.start || !slot.end) throw badRequest('invalid_slot', 'Choose one of the proposed slots');
-  if (slot.start <= clock()) throw badRequest('slot_past', 'That slot is already in the past — ask for new times');
-  await assertNoMentorClash(acc.mentorship.alumnus, { start: slot.start, end: slot.end }, s._id);
-  s.scheduledStart = slot.start;
-  s.scheduledEnd = slot.end;
+  const now = clock();
+  if (slot.start <= now) throw badRequest('slot_past', 'That slot is already in the past — ask for new times');
+  const want = { start: slot.start, end: slot.end };
+  if ((await mentorBookingsOverlapping(acc.mentorship.alumnus, want, found._id)).length) throw conflict('slot_clash', SLOT_CLASH);
 
   // Paid mentor: hold the slot until the student pays (at most 30 minutes, never past the start).
   const fee = await sessionFeeFor(acc.mentorship.alumnus);
+  const paymentDueAt = fee > 0 ? new Date(Math.max(now.getTime() + 2 * 60_000, Math.min(now.getTime() + PAYMENT_HOLD_MS, slot.start.getTime() - 5 * 60_000))) : undefined;
+
+  // Claim the proposal atomically: of several clicks or devices booking it at once, exactly one wins.
+  const s = await Session.findOneAndUpdate(
+    { _id: found._id, status: 'proposed' },
+    // bookedAt comes from the database clock at the moment of the claim, so it orders the claims themselves.
+    { $set: { status: fee > 0 ? 'awaiting_payment' : 'scheduled', scheduledStart: slot.start, scheduledEnd: slot.end, ...(fee > 0 ? { fee, paymentDueAt } : {}) }, $currentDate: { bookedAt: true } },
+    { new: true },
+  );
+  if (!s) throw conflict('not_proposed', 'This session was just booked');
+
+  // Two overlapping sessions with the same mentor booked at the same moment both pass the check
+  // above; now that ours holds the time, re-check, and the earlier booking keeps it.
+  const rivals = await mentorBookingsOverlapping(acc.mentorship.alumnus, want, s._id);
+  const mine = s.bookedAt!.getTime();
+  const earlier = (r: { _id: unknown; bookedAt?: Date | null }) => !r.bookedAt || r.bookedAt.getTime() < mine || (r.bookedAt.getTime() === mine && String(r._id) < String(s._id));
+  if (rivals.some(earlier)) {
+    await Session.updateOne({ _id: s._id, status: s.status }, { $set: { status: 'proposed' }, $unset: { scheduledStart: 1, scheduledEnd: 1, bookedAt: 1, fee: 1, paymentDueAt: 1 } });
+    throw conflict('slot_clash', SLOT_CLASH);
+  }
+
   if (fee > 0) {
-    const now = clock().getTime();
-    s.status = 'awaiting_payment';
-    s.fee = fee;
-    s.paymentDueAt = new Date(Math.max(now + 2 * 60_000, Math.min(now + PAYMENT_HOLD_MS, slot.start.getTime() - 5 * 60_000)));
-    await s.save();
     await touchMentorship(acc.mentorship._id, clock());
     await audit(viewer, 'session.held_for_payment', 'Session', s._id, { fee });
     if (viewer.id !== acc.studentUserId) {
       await notify(acc.studentUserId, 'payment_due', {
         title: 'Pay to confirm your session',
-        body: `${s.title} — ${rupees(fee)}. The slot is held for you until ${s.paymentDueAt.toUTCString()}.`,
+        body: `${s.title} — ${rupees(fee)}. The slot is held for you until ${paymentDueAt!.toUTCString()}.`,
         link: `/mentorships/${mentorshipId}?tab=sessions`,
       });
     }
@@ -132,6 +152,9 @@ export async function cancelSession(viewer: Viewer, mentorshipId: string, sessio
   const s = await Session.findOne({ _id: sessionId, mentorship: acc.mentorship._id });
   if (!s) throw notFound('Session');
   if (!['proposed', 'awaiting_payment', 'scheduled'].includes(s.status)) throw conflict('not_cancellable', 'Only upcoming sessions can be cancelled');
+  if (s.status === 'scheduled' && s.scheduledStart && s.scheduledStart <= clock()) {
+    throw conflict('already_started', "This session has already started, so it can't be cancelled. Log it instead, as completed or as didn't happen.");
+  }
   const wasHeld = s.status === 'awaiting_payment';
   s.status = 'cancelled';
   s.paymentDueAt = undefined;
@@ -144,6 +167,44 @@ export async function cancelSession(viewer: Viewer, mentorshipId: string, sessio
   const refund = await refundOnCancel(s, acc.role === 'student' ? 'student' : 'mentor', clock());
   await notify(acc.counterpartUserId, 'session_cancelled', { title: 'A session was cancelled', body: reason ?? undefined, link: `/mentorships/${mentorshipId}?tab=sessions` });
   return { session: s, refund };
+}
+
+/** Cancels a booked session (its calendar events go too) and tells both people why. */
+export async function cancelBookedSession(s: InstanceType<typeof Session>, actorId: string | null, reason: string) {
+  s.status = 'cancelled';
+  s.cancelledBy = (actorId ?? undefined) as any;
+  s.cancelReason = reason;
+  for (const e of s.externalEvents ?? []) await deleteExternalEvent(String(e.userId), e.provider as Provider, String(e.eventId));
+  await s.save();
+  const m = await Mentorship.findById(s.mentorship).populate('student', 'user').populate('alumnus', 'user').lean();
+  for (const uid of [(m?.student as any)?.user, (m?.alumnus as any)?.user].filter(Boolean)) {
+    if (String(uid) === actorId) continue;
+    await notify(uid, 'session_cancelled', { title: `Session cancelled: ${s.title}`, body: reason, link: `/mentorships/${s.mentorship}?tab=sessions` });
+  }
+}
+
+/**
+ * When a mentorship closes, nothing in it can go ahead: proposals nobody picked and unpaid holds
+ * are cancelled, and so are booked sessions that haven't started, with a full refund if paid.
+ * Booked sessions whose time has passed stay as they are, so they can still be logged.
+ */
+export async function closeUpcomingSessions(mentorshipId: unknown, actorId: string, reason: string, clock: Clock = systemClock) {
+  const now = clock();
+  const open = await Session.find({ mentorship: mentorshipId, status: { $in: ['proposed', 'awaiting_payment'] } }).select('_id').lean();
+  for (const o of open) {
+    const closed = await Session.updateOne(
+      { _id: o._id, status: { $in: ['proposed', 'awaiting_payment'] } },
+      { $set: { status: 'cancelled', cancelledBy: actorId, cancelReason: reason }, $unset: { paymentDueAt: 1 } },
+    );
+    if (closed.modifiedCount) await failOpenPayments(o._id, `${reason} before the session was paid for`);
+  }
+  const booked = await Session.find({ mentorship: mentorshipId, status: 'scheduled', scheduledStart: { $gt: now } });
+  for (const s of booked) {
+    await cancelBookedSession(s, actorId, reason);
+    const p = s.payment ? await Payment.findById(s.payment) : null;
+    if (p?.status === 'paid') await refundPayment(p, reason, now);
+  }
+  return { open: open.length, booked: booked.length };
 }
 
 export async function completeSession(

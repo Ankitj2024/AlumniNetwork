@@ -365,4 +365,27 @@ describe('privacy: alumni contact details never reach a student', () => {
     expect(maskContactDetails('wa.me/919876543210').count).toBeGreaterThanOrEqual(1);
     expect(maskContactDetails('Session on 2026-05-12 10:30, room 204').count).toBe(0);
   });
+
+  // Last in the file: as admin, some writes change seeded data (a refund, a nudge, a job run).
+  it('every route answers the alumni office, placement and admin without a server error; placement reaches only reporting', async () => {
+    const staff = {
+      aro: await User.findOne({ email: 'aro@demo.edu' }).lean(),
+      placement: await User.findOne({ email: 'placement@demo.edu' }).lean(),
+      admin: await User.findOne({ email: 'admin@demo.edu' }).lean(),
+    };
+    const placementOk: string[] = [];
+    for (const [role, u] of Object.entries(staff)) {
+      for (const r of listRoutes()) {
+        const p = fill(r.path);
+        const res = await (api() as any)[r.method.toLowerCase()](p + (r.method === 'GET' ? QUERY[r.path] ?? '' : '')).set(auth(u!)).send({});
+        // 501 = an integration this server has no credentials for (e.g. Google Calendar), by design.
+        expect(res.status < 500 || res.status === 501, `${role} ${r.method} ${r.path} → ${res.status} ${JSON.stringify(res.body)}`).toBe(true);
+        if (role === 'placement' && r.method === 'GET' && res.status === 200) placementOk.push(r.path);
+      }
+    }
+    // Placement is a read-only reporting role: no admin, verification, records, payments, mentorships or requests.
+    const off = placementOk.filter((p) => /^\/api\/(admin|alumni\/(verify|records)|payments\/(?!config)|payments$|mentorships|requests|students|analytics\/mentors)/.test(p));
+    expect(off, 'placement reached staff or participant data').toEqual([]);
+    expect(placementOk).toEqual(expect.arrayContaining(['/api/analytics/programme', '/api/analytics/placement']));
+  });
 });

@@ -84,7 +84,14 @@ Every time staff open a verification document, it is recorded in the audit log.
 
 **Mentorship content:** Alumni Relations Officers and Administrators can open any mentorship in read-only mode, including its messages, sessions, goals and feedback, to support engagement monitoring and safeguarding. Placement Officers cannot. Participants should be told this in the programme's terms of use.
 
-## 7. How this is enforced (for technical reviewers)
+## 7. Your data: download and deletion (DPDP Act 2023)
+
+- **Download:** in Settings → Your data, a student or alumnus downloads a JSON file of everything the platform holds about them: account, profile, requests, mentorships with their sessions, goals, messages and feedback, payments (or earnings) and notifications. It is built from the same views as the app, so it contains no one else's contact details.
+- **Delete:** the same page erases the account after the person types DELETE (and their password, if the account has one). Their personal data, saved cards, verification documents, availability, calendar connections and notifications are deleted, and every session is signed out. Active mentorships end; upcoming sessions are cancelled and paid ones refunded in full; pending requests are withdrawn (student) or declined (mentor).
+- **What is kept, without the person's name:** payment records (Indian tax and accounting law requires them), messages and feedback in shared mentorships (they belong to the other person's record too), and the audit log. These now show "Deleted user". The email address is released and can be used to register again.
+- Staff accounts (Alumni Relations, Placement, Admin) are removed by an administrator, not by self-service.
+
+## 8. How this is enforced (for technical reviewers)
 
 1. **Storage:** `email`, `phone` and `linkedinUrl` are marked `select: false` in the database schema, so they are not loaded unless code explicitly asks for them.
 2. **One serializer:** every API response and socket event is built by `apps/api/src/serializers/index.ts`, which uses explicit allow-lists. A field reaches a client only if it is named there. Every piece of free text shown to another person (names, bios, titles, goals, messages, notes, notifications) is also passed through contact-detail masking at this layer, on top of masking before storage.

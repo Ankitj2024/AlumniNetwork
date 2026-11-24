@@ -4,17 +4,23 @@ import { useState } from 'react';
 import { Badge, PageHeader, PageLoader, cx, useToast } from '@/components/ui';
 import { patch } from '@/lib/api';
 import { relTime } from '@/lib/format';
+import { useAuth } from '@/lib/auth';
 import { useApi } from '@/lib/hooks';
 
 export default function UsersPage() {
   const toast = useToast();
+  const { me } = useAuth();
   const [role, setRole] = useState('');
   const [q, setQ] = useState('');
   const { data, loading, reload } = useApi<{ users: any[] }>(`/admin/users?role=${role}&q=${encodeURIComponent(q)}`);
 
   async function toggle(u: any) {
-    await patch(`/admin/users/${u.id}`, { status: u.status === 'active' ? 'suspended' : 'active' });
-    toast(u.status === 'active' ? 'User suspended' : 'User reactivated');
+    try {
+      await patch(`/admin/users/${u.id}`, { status: u.status === 'active' ? 'suspended' : 'active' });
+      toast(u.status === 'active' ? 'User suspended' : 'User reactivated');
+    } catch (e: any) {
+      toast(e.message, 'err'); // e.g. the last administrator can't be suspended
+    }
     reload();
   }
 
@@ -57,9 +63,13 @@ export default function UsersPage() {
                     <Badge tone={u.status === 'active' ? 'green' : 'red'}>{u.status}</Badge>
                   </td>
                   <td className="px-4 py-2.5 text-right">
-                    <button className="btn-ghost px-2 text-xs" onClick={() => toggle(u)}>
-                      {u.status === 'active' ? 'Suspend' : 'Reactivate'}
-                    </button>
+                    {u.id === me?.user.id ? (
+                      <span className="px-2 text-xs text-ink-400">You</span>
+                    ) : (
+                      <button className="btn-ghost px-2 text-xs" onClick={() => toggle(u)}>
+                        {u.status === 'active' ? 'Suspend' : 'Reactivate'}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

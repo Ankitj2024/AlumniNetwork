@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { notFound } from '../lib/errors.js';
+import { conflict, notFound } from '../lib/errors.js';
+import { escapeRegex } from '../lib/regex.js';
 import { requireRole } from '../middleware/auth.js';
 import { ah, oid, parse } from '../middleware/common.js';
 import { Alumnus, AuditLog, MentorCapacity, Mentorship, MentorshipRequest, Settings, StudentProfile, User, VerificationRequest } from '../models/index.js';
@@ -165,7 +166,7 @@ r.get(
   ah(async (req, res) => {
     const filter: Record<string, unknown> = {};
     if (typeof req.query.role === 'string' && req.query.role) filter.role = req.query.role;
-    if (typeof req.query.q === 'string' && req.query.q) filter.name = { $regex: req.query.q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
+    if (typeof req.query.q === 'string' && req.query.q) filter.name = { $regex: escapeRegex(req.query.q), $options: 'i' };
     const users = await User.find(filter).select('+email +phone').sort({ createdAt: -1 }).limit(200).lean();
     res.json({ users: users.map(staffUser) });
   }),
@@ -176,7 +177,20 @@ r.patch(
   requireRole('admin'),
   ah(async (req, res) => {
     const b = parse(z.object({ status: z.enum(['active', 'suspended']).optional(), role: z.enum(['student', 'alumnus', 'aro', 'placement', 'admin']).optional() }), req.body);
-    const u = await User.findByIdAndUpdate(oid(req.params.id, 'User'), { $set: b }, { new: true }).select('+email +phone').lean();
+    const target = await User.findById(oid(req.params.id, 'User')).lean();
+    if (!target) throw notFound('User');
+    if (target.status === 'deleted') throw conflict('account_deleted', 'This account was deleted by its owner and cannot be changed');
+    const losesAdmin = target.role === 'admin' && ((b.role !== undefined && b.role !== 'admin') || b.status === 'suspended');
+    if (String(target._id) === req.viewer!.id && losesAdmin) throw conflict('self_change', "You can't suspend yourself or remove your own admin role. Ask another administrator.");
+    // A student's or alumnus's profile, requests and mentorships belong to that role, so it can't be switched.
+    const participant = (role?: string) => role === 'student' || role === 'alumnus';
+    if (b.role !== undefined && b.role !== target.role && (participant(target.role) || participant(b.role))) {
+      throw conflict('role_locked', 'Students and alumni keep their role. Staff roles (Alumni Relations, Placement, Admin) can be changed among themselves.');
+    }
+    if (losesAdmin && !(await User.exists({ role: 'admin', status: 'active', _id: { $ne: target._id } }))) {
+      throw conflict('last_admin', 'At least one active administrator is required.');
+    }
+    const u = await User.findByIdAndUpdate(target._id, { $set: b }, { new: true }).select('+email +phone').lean();
     if (!u) throw notFound('User');
     await audit(req.viewer!, 'user.updated', 'User', u._id, b);
     res.json({ user: staffUser(u) });
@@ -188,7 +202,7 @@ r.get(
   requireRole('admin', 'aro'),
   ah(async (req, res) => {
     const filter: Record<string, unknown> = {};
-    if (typeof req.query.action === 'string' && req.query.action) filter.action = { $regex: `^${req.query.action.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}` };
+    if (typeof req.query.action === 'string' && req.query.action) filter.action = { $regex: `^${escapeRegex(req.query.action)}` };
     if (typeof req.query.entityId === 'string' && req.query.entityId) filter.entityId = oid(req.query.entityId);
     const logs = await AuditLog.find(filter).sort({ createdAt: -1 }).limit(200).populate('actor', 'name role').lean();
     res.json({

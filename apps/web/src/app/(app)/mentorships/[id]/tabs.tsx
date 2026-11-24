@@ -177,6 +177,8 @@ export function SessionsTab({ id, role, active, mentorFee = 0, otherName = 'the 
             {upcoming.map((s) => {
               const mine = s.proposedBy === me?.user.id;
               const started = s.scheduledStart && new Date(s.scheduledStart).getTime() < Date.now() + 15 * 60000;
+              // Once a booked session's time has come it can't be cancelled, only logged.
+              const begun = s.status === 'scheduled' && !!s.scheduledStart && new Date(s.scheduledStart).getTime() <= Date.now();
               return (
                 <li key={s.id} className="rounded-xl border border-ink-100 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -205,7 +207,7 @@ export function SessionsTab({ id, role, active, mentorFee = 0, otherName = 'the 
                       )}
                       <div className="flex flex-wrap gap-2">
                         {s.proposedSlots.map((sl, i) => (
-                          <button key={i} className={mine || role === 'staff' ? 'chip' : 'btn-secondary'} disabled={mine || role === 'staff'} onClick={() => book(s, i)}>
+                          <button key={i} className={mine || role === 'staff' || !active ? 'chip' : 'btn-secondary'} disabled={mine || role === 'staff' || !active} onClick={() => book(s, i)}>
                             {fmtDateTime(sl.start)}
                           </button>
                         ))}
@@ -257,7 +259,7 @@ export function SessionsTab({ id, role, active, mentorFee = 0, otherName = 'the 
                       )}
                     </div>
                   )}
-                  {role !== 'staff' && (
+                  {role !== 'staff' && !begun && (
                     <button className="btn-ghost mt-2 px-0 text-xs text-ink-500" onClick={() => cancel(s)}>
                       Cancel
                     </button>

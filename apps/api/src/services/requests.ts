@@ -16,6 +16,7 @@ import { audit } from './audit.js';
 import { claimSlot, isAccepting, releaseSlot } from './capacity.js';
 import { matchForPair } from './matching.js';
 import { notify } from './notify.js';
+import { closeUpcomingSessions } from './sessions.js';
 import { getSettings } from './settings.js';
 
 export async function studentProfileFor(viewer: Viewer) {
@@ -63,6 +64,7 @@ export async function createRequest(viewer: Viewer, input: { alumnusId: string; 
 
   const alumnus = await Alumnus.findById(input.alumnusId).lean();
   if (!alumnus || alumnus.verificationStatus !== 'verified' || !alumnus.mentorOptIn) throw notFound('Mentor');
+  if (!(await User.exists({ _id: alumnus.user, status: 'active' }))) throw notFound('Mentor'); // suspended accounts take no requests
 
   // --- Student-side throttling (configurable by administrators)
   const t = await throttleStatus(student._id, now);
@@ -206,6 +208,17 @@ export async function acceptRequest(viewer: Viewer, requestId: string, clock: Cl
     throw e;
   }
 
+  // Concurrency-safe re-check (as for new requests): two mentors accepting the same student at the
+  // same moment both pass the count above. The earliest mentorships within the limit stand; a later
+  // one is rolled back, its slot returned, and its request withdrawn like the student's other ones.
+  const activeIds = await Mentorship.find({ student: req.student, status: 'active' }).sort({ _id: 1 }).select('_id').lean();
+  if (activeIds.findIndex((x) => String(x._id) === String(mentorship._id)) >= s.throttle.maxActiveMentorshipsPerStudent) {
+    await Mentorship.deleteOne({ _id: mentorship._id });
+    await releaseSlot(alumnus._id);
+    await MentorshipRequest.updateOne({ _id: req._id }, { $set: { status: 'withdrawn', respondedAt: now } });
+    throw conflict('student_at_limit', 'This student has since reached the limit of active mentorships');
+  }
+
   await audit(viewer, 'request.accepted', 'MentorshipRequest', req._id, { mentorship: String(mentorship._id) });
   const [student, mentorUser] = await Promise.all([StudentProfile.findById(req.student).lean(), User.findById(viewer.id).lean()]);
   if (student) {
@@ -299,6 +312,8 @@ export async function endMentorship(viewer: Viewer, mentorshipId: string, outcom
   ).lean();
   if (!m) throw conflict('not_active', 'This mentorship is not active');
   await releaseSlot(m.alumnus);
+  // Nothing in a closed mentorship can go ahead: open proposals, holds and booked sessions are cancelled (paid ones refunded).
+  await closeUpcomingSessions(m._id, viewer.id, 'The mentorship ended');
   await audit(viewer, `mentorship.${outcome}`, 'Mentorship', m._id, { reason });
   const [student, alumnus] = await Promise.all([StudentProfile.findById(m.student).lean(), Alumnus.findById(m.alumnus).lean()]);
   for (const uid of [student?.user, alumnus?.user].filter(Boolean)) {

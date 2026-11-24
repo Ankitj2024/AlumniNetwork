@@ -11,6 +11,7 @@ import { Alumnus, StudentProfile, User } from '../models/index.js';
 import { selfUser } from '../serializers/index.js';
 import { consumeToken, recentTokenCount, sendPasswordResetEmail, sendSecurityNotice, sendVerificationEmail } from '../services/account.js';
 import { audit } from '../services/audit.js';
+import { deleteMyAccount, exportMyData } from '../services/dataRights.js';
 import { GoogleAuthError, exchangeGoogleCode, googleAuthUrl, googleConfigured, safeNext, upsertGoogleUser } from '../services/googleAuth.js';
 import { beginSetup, checkSecondFactor, completeSetup, readChallenge, replaceRecoveryCodes, signChallenge, turnOff, type SecondFactorResult } from '../services/mfa.js';
 
@@ -121,6 +122,31 @@ r.post(
     req.viewer = { id: String(user._id), role: user.role as any, email: user.email, phone: user.phone ?? undefined };
     await audit({ id: String(user._id), role: user.role as any }, result.usedRecoveryCode ? 'user.login_recovery_code' : 'user.login_2fa', 'User', user._id);
     res.json({ user: selfUser(user.toObject()), token, recoveryCodesLeft: result.recoveryCodesLeft });
+  }),
+);
+
+/* ------------------------------------------- data rights (DPDP Act 2023) */
+r.get(
+  '/me/export',
+  requireAuth,
+  ah(async (req, res) => {
+    const data = await exportMyData(req.viewer!);
+    res.setHeader('Content-Disposition', `attachment; filename="my-data-${new Date().toISOString().slice(0, 10)}.json"`);
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(data);
+  }),
+);
+
+r.post(
+  '/me/delete',
+  requireAuth,
+  authLimiter,
+  ah(async (req, res) => {
+    const b = parse(z.object({ confirm: z.string().max(20).default(''), password: z.string().max(200).optional() }), req.body ?? {});
+    await deleteMyAccount(req.viewer!, b);
+    res.clearCookie(env.cookieName, { path: '/' });
+    res.clearCookie(MFA_COOKIE, mfaCookieOpts);
+    res.json({ ok: true });
   }),
 );
 

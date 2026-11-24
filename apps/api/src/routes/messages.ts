@@ -36,11 +36,11 @@ export async function postMessage(viewer: { id: string; role: any }, mentorshipI
 r.get(
   '/',
   ah(async (req, res) => {
-    const mentorshipId = String(oid(String(req.query.mentorshipId ?? ''), 'Mentorship'));
-    const acc = await mentorshipAccess(req.viewer!, mentorshipId);
+    const q = parse(z.object({ mentorshipId: z.string(), before: z.coerce.date().optional(), limit: z.coerce.number().int().min(1).max(200).default(50) }), req.query);
+    const acc = await mentorshipAccess(req.viewer!, String(oid(q.mentorshipId, 'Mentorship')));
     const filter: Record<string, unknown> = { mentorship: acc.mentorship._id };
-    if (typeof req.query.before === 'string') filter.createdAt = { $lt: new Date(req.query.before) };
-    const list = await Message.find(filter).sort({ createdAt: -1 }).limit(Math.min(Number(req.query.limit ?? 50), 200)).lean();
+    if (q.before) filter.createdAt = { $lt: q.before };
+    const list = await Message.find(filter).sort({ createdAt: -1 }).limit(q.limit).lean();
     res.json({ messages: list.reverse().map(messageView) });
   }),
 );

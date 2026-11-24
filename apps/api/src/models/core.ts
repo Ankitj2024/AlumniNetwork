@@ -18,7 +18,8 @@ const userSchema = new Schema(
     googleSub: { type: String, select: false, index: { unique: true, sparse: true } },
     avatarUrl: { type: String },
     role: { type: String, enum: ROLES, required: true, index: true },
-    status: { type: String, enum: ['active', 'suspended'], default: 'active' },
+    status: { type: String, enum: ['active', 'suspended', 'deleted'], default: 'active' },
+    deletedAt: Date, // set when the person erased their account; the record stays as an anonymous placeholder
     notificationPrefs: {
       email: { type: Boolean, default: true },
       sms: { type: Boolean, default: false },
@@ -175,7 +176,7 @@ export const VerificationRequest = model('VerificationRequest', verificationRequ
 const mentorCapacitySchema = new Schema(
   {
     alumnus: { type: ObjectId, ref: 'Alumnus', required: true, unique: true },
-    maxMentees: { type: Number, required: true, min: 0, max: 20, default: 2 },
+    maxMentees: { type: Number, required: true, min: 0, max: 10, default: 2 },
     activeCount: { type: Number, required: true, min: 0, default: 0 },
     /** Mentor-side intake protection: max open (pending) requests before they stop appearing in discovery. */
     maxPendingRequests: { type: Number, min: 1, max: 30, default: 5 },

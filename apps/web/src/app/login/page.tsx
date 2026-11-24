@@ -97,7 +97,12 @@ function LoginForm() {
     setError(null);
     signInRef.current?.focus(); // so Enter signs in straight away
   };
-  const notice =params.get('reset') === '1' ? 'Password changed. Sign in with your new password.' : null;
+  const notice =
+    params.get('reset') === '1'
+      ? 'Password changed. Sign in with your new password.'
+      : params.get('deleted') === '1'
+        ? 'Your account has been deleted. Thank you for being part of the network.'
+        : null;
 
   const go = (role: string) => router.replace(next && next.startsWith('/') && !next.startsWith('//') ? next : homeFor(role));
 

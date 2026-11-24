@@ -139,8 +139,9 @@ r.get(
   '/:id',
   requireAuth,
   ah(async (req, res) => {
-    const a = await Alumnus.findOne({ _id: oid(req.params.id, 'Mentor'), verificationStatus: 'verified' }).populate('user', 'name').populate('expertise').lean();
-    if (!a) throw notFound('Mentor');
+    const a = await Alumnus.findOne({ _id: oid(req.params.id, 'Mentor'), verificationStatus: 'verified' }).populate('user', 'name status').populate('expertise').lean();
+    // Staff can still open a suspended mentor's profile; students and other alumni cannot.
+    if (!a || ((a.user as any)?.status !== 'active' && !['aro', 'admin'].includes(req.viewer!.role))) throw notFound('Mentor');
     const [cap, windows, pending] = await Promise.all([
       MentorCapacity.findOne({ alumnus: a._id }).lean(),
       AvailabilityWindow.find({ alumnus: a._id }).sort({ dayOfWeek: 1, startMinute: 1 }).lean(),

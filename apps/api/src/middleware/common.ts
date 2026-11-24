@@ -49,6 +49,9 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
   if (err instanceof ZodError) {
     return res.status(400).json({ error: { code: 'validation_error', message: 'Invalid input', details: err.flatten() } });
   }
+  if (err instanceof mongoose.Error.CastError) {
+    return res.status(400).json({ error: { code: 'validation_error', message: `Invalid value for ${err.path}` } });
+  }
   if (err instanceof mongoose.Error.ValidationError) {
     return res.status(400).json({ error: { code: 'validation_error', message: err.message } });
   }

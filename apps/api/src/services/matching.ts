@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { escapeRegex } from '../lib/regex.js';
 import {
   Alumnus,
   AvailabilityWindow,
@@ -142,7 +143,6 @@ export interface SearchFilters {
   offset?: number;
 }
 
-const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
  * Mentor discovery + ranked matching, computed on demand.
@@ -155,12 +155,13 @@ export async function searchMentors(filters: SearchFilters, studentProfileId?: s
 
   const base: Record<string, any> = { verificationStatus: 'verified', mentorOptIn: true };
   if (filters.q) {
-    const re = new RegExp(escapeRe(filters.q.trim()), 'i');
+    const re = new RegExp(escapeRegex(filters.q.trim()), 'i');
     // Names live on the user record: match alumni users by name, then include their profiles.
     const named = await User.find({ role: 'alumnus', name: re }).select('_id').lean();
     base.$or = [{ user: { $in: named.map((u) => u._id) } }, { headline: re }, { currentRole: re }, { currentCompany: re }, { industry: re }, { bio: re }];
   }
-  const all = await Alumnus.find(base).populate('user', 'name').populate('expertise').lean();
+  // Suspended accounts are never offered to students.
+  const all = (await Alumnus.find(base).populate('user', 'name status').populate('expertise').lean()).filter((a) => (a.user as any)?.status === 'active');
 
   const ids = all.map((a) => a._id);
   const [caps, pending, avail, activeWithStudent] = await Promise.all([

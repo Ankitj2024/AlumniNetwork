@@ -79,6 +79,7 @@ const sessionSchema = new Schema(
       default: 'proposed',
       index: true,
     },
+    bookedAt: Date, // when a slot was picked; the earlier of two overlapping bookings keeps the mentor's time
     fee: { type: Number, min: 0 }, // paise, fixed when the slot is picked
     paymentDueAt: Date, // hold expiry for awaiting_payment
     payment: { type: ObjectId, ref: 'Payment' }, // the successful payment

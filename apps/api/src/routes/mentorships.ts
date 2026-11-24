@@ -171,6 +171,7 @@ r.post(
     const b = parse(z.object({ title: z.string().trim().min(3).max(200), description: z.string().trim().max(2000).optional(), targetDate: z.coerce.date().optional(), careerGoalId: z.string().optional() }), req.body);
     const acc = await mentorshipAccess(req.viewer!, String(oid(req.params.id)), { write: true });
     if (acc.mentorship.status !== 'active') throw conflict('not_active', 'This mentorship is not active');
+    if (b.careerGoalId && !(await CareerGoal.exists({ _id: oid(b.careerGoalId, 'Career goal'), student: acc.mentorship.student }))) throw badRequest('invalid_career_goal', "That career goal isn't one of this student's");
     const g = await Goal.create({ mentorship: acc.mentorship._id, title: b.title, description: b.description, targetDate: b.targetDate, careerGoal: b.careerGoalId ? oid(b.careerGoalId) : undefined, createdBy: req.viewer!.id });
     await touchMentorship(acc.mentorship._id);
     res.status(201).json({ goal: goalView(g.toObject()) });
@@ -199,6 +200,7 @@ r.post(
     const acc = await mentorshipAccess(req.viewer!, String(oid(req.params.id)), { write: true });
     if (acc.mentorship.status !== 'active') throw conflict('not_active', 'This mentorship is not active');
     if (b.goalId && !(await Goal.exists({ _id: oid(b.goalId, 'Goal'), mentorship: acc.mentorship._id }))) throw badRequest('invalid_goal', 'Goal does not belong to this mentorship');
+    if (b.sessionId && !(await Session.exists({ _id: oid(b.sessionId, 'Session'), mentorship: acc.mentorship._id }))) throw badRequest('invalid_session', 'Session does not belong to this mentorship');
     const a = await ActionItem.create({ mentorship: acc.mentorship._id, title: b.title, assignee: b.assignee, dueDate: b.dueDate, goal: b.goalId, session: b.sessionId, createdBy: req.viewer!.id });
     await touchMentorship(acc.mentorship._id);
     res.status(201).json({ actionItem: actionItemView(a.toObject()) });

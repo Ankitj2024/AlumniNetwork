@@ -23,7 +23,7 @@ import {
   type TokenInfo,
 } from './gateway.js';
 import { notify } from './notify.js';
-import { confirmSession } from './sessions.js';
+import { cancelBookedSession, confirmSession } from './sessions.js';
 import { getSettings, type ProgrammeSettings } from './settings.js';
 
 /** "₹499" / "₹449.10" from paise, for notification text. */
@@ -69,6 +69,7 @@ export async function startCheckout(viewer: Viewer, sessionId: string, clock: Cl
   if (!s) throw notFound('Session');
   const acc = await mentorshipAccess(viewer, String(s.mentorship), { write: true });
   if (acc.role !== 'student') throw forbidden('Only the student pays for a session');
+  if (acc.mentorship.status !== 'active') throw conflict('not_active', 'This mentorship has ended');
   if (s.status !== 'awaiting_payment' || !s.fee) throw conflict('not_awaiting_payment', 'This session does not need a payment');
   const now = clock();
   if (s.paymentDueAt && s.paymentDueAt <= now) throw conflict('hold_expired', 'The hold on this slot has lapsed — pick a time again');
@@ -295,7 +296,10 @@ export async function staffRefund(viewer: Viewer, paymentId: string, reason: str
   if (p.status !== 'paid') throw conflict('not_refundable', 'Only paid payments can be refunded');
   const r = await refundPayment(p, reason || 'Refunded by the alumni office', clock());
   await audit(viewer, 'payment.staff_refund', 'Payment', p._id, { reason });
-  return { payment: p, refund: r };
+  // Refunding a session that hasn't happened yet cancels it, so it isn't held for free.
+  const s = r?.refunded ? await Session.findOne({ _id: p.session, status: 'scheduled', scheduledStart: { $gt: clock() } }) : null;
+  if (s) await cancelBookedSession(s, viewer.id, `${reason || 'Refunded by the alumni office'}. The session is cancelled.`);
+  return { payment: p, refund: r, sessionCancelled: !!s };
 }
 
 /** Unpaid attempts for a session are closed when the session is cancelled or its hold lapses. */
