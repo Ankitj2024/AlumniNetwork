@@ -1,5 +1,6 @@
 'use client';
 import { Receipt } from 'lucide-react';
+import { SessionPass } from '@/components/SessionPass';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { Checkout } from '@/components/payments/Checkout';
@@ -166,9 +167,16 @@ export function SessionsTab({ id, role, active, mentorFee = 0, otherName = 'the 
   const sessions = data?.sessions ?? [];
   const upcoming = sessions.filter((s) => s.status === 'proposed' || s.status === 'awaiting_payment' || s.status === 'scheduled');
   const past = sessions.filter((s) => !['proposed', 'awaiting_payment', 'scheduled'].includes(s.status));
+  // The next confirmed meeting that hasn't ended, shown as a pass to tear and join.
+  const meeting = role === 'staff' ? undefined : sessions.filter((s) => s.status === 'scheduled' && s.scheduledStart && new Date(s.scheduledEnd ?? s.scheduledStart).getTime() > Date.now()).sort((a, b) => +new Date(a.scheduledStart!) - +new Date(b.scheduledStart!))[0];
 
   return (
     <div className="space-y-6">
+      {meeting && (
+        <section className="rounded-[22px] bg-ink-900/[0.03] px-4 py-8" aria-label="Your next session">
+          <SessionPass meeting={{ id: meeting.id, title: meeting.title ?? null, scheduledStart: meeting.scheduledStart ?? null, scheduledEnd: meeting.scheduledEnd ?? null, videoLink: meeting.videoLink ?? null }} withName={otherName} mentorshipId={id} />
+        </section>
+      )}
       <Card title="Upcoming" actions={active && role !== 'staff' && <button className="btn-primary text-xs" onClick={() => setProposing(true)}>Propose times</button>}>
         {upcoming.length === 0 ? (
           <EmptyState title="No upcoming sessions" body="Propose two or three times that suit you — the other person picks one." />

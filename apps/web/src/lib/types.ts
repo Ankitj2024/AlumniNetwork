@@ -1,7 +1,7 @@
 export type Role = 'student' | 'alumnus' | 'aro' | 'placement' | 'admin';
 
 export interface Me {
-  user: { id: string; name: string; email: string; phone: string | null; avatarUrl?: string | null; role: Role; timezone: string; notificationPrefs: { email: boolean; sms: boolean }; emailVerified: boolean; mfaEnabled: boolean };
+  user: { id: string; name: string; email: string; phone: string | null; avatarUrl?: string | null; role: Role; timezone: string; notificationPrefs: { email: boolean; sms: boolean }; emailVerified: boolean; mfaEnabled: boolean; needsOnboarding?: boolean };
   profile: { studentProfileId?: string | null; profileComplete?: boolean; alumnusId?: string | null; verificationStatus?: 'unverified' | 'pending' | 'verified' | 'rejected' };
   security: {
     hasPassword: boolean;
@@ -107,6 +107,8 @@ export interface Mentorship {
   student: StudentCard;
   viewerRole: 'student' | 'mentor' | 'staff';
   nextSessionAt?: string | null;
+  /** The next meeting to join (participants only): soonest scheduled session that hasn't ended. */
+  nextMeeting?: { id: string; title: string | null; scheduledStart: string | null; scheduledEnd: string | null; videoLink: string | null } | null;
   daysSinceActivity?: number;
   lastNudgedAt?: string | null;
 }

@@ -64,7 +64,7 @@ r.post(
     );
     const exists = await User.exists({ email: body.email.toLowerCase() });
     if (exists) throw conflict('email_taken', 'An account with this email already exists');
-    const user = await User.create({ name: body.name, email: body.email, phone: body.phone, role: body.role, passwordHash: await bcrypt.hash(body.password, 10) });
+    const user = await User.create({ name: body.name, email: body.email, phone: body.phone, role: body.role, passwordHash: await bcrypt.hash(body.password, 10), onboardingPending: true });
     if (body.role === 'student') await StudentProfile.create({ user: user._id });
     else await Alumnus.create({ user: user._id, verificationStatus: 'unverified' });
     await audit({ id: String(user._id), role: user.role as any }, 'user.registered', 'User', user._id);
@@ -194,6 +194,8 @@ r.patch(
         phone: z.string().trim().max(20).optional(),
         timezone: z.string().max(60).optional(),
         notificationPrefs: z.object({ email: z.boolean(), sms: z.boolean() }).partial().optional(),
+        /** Finished (or skipped) the first-run onboarding. One way: it never comes back. */
+        onboarded: z.literal(true).optional(),
       }),
       req.body,
     );
@@ -203,6 +205,10 @@ r.patch(
     if (body.timezone) set.timezone = body.timezone;
     if (body.notificationPrefs?.email !== undefined) set['notificationPrefs.email'] = body.notificationPrefs.email;
     if (body.notificationPrefs?.sms !== undefined) set['notificationPrefs.sms'] = body.notificationPrefs.sms;
+    if (body.onboarded) {
+      set.onboardingPending = false;
+      set.onboardedAt = new Date();
+    }
     const u = await User.findByIdAndUpdate(req.viewer!.id, { $set: set }, { new: true }).select('+email +phone').lean();
     res.json({ user: selfUser(u) });
   }),

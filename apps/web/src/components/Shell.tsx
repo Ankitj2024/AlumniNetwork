@@ -14,6 +14,7 @@ import type { Notice, Role } from '@/lib/types';
 import { EmailBanner, StaffMfaGate } from './AccountNotices';
 import { openCommandPalette } from './CommandPalette';
 import { LogoMark } from './Logo';
+import { Onboarding } from './Onboarding';
 import { PageTransition } from './motion';
 import { Avatar, PageLoader, cx, useToast } from './ui';
 
@@ -174,6 +175,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <PageTransition routeKey={path}>{children}</PageTransition>
         </main>
       </div>
+
+      {/* first-run onboarding: new accounts only, once */}
+      <AnimatePresence>{me.user.needsOnboarding && <Onboarding key="onboarding" />}</AnimatePresence>
     </div>
   );
 }

@@ -2,15 +2,13 @@
 import { motion } from 'framer-motion';
 import { ArrowRight, CalendarClock, Clock, Compass, Send, Sparkles, UserRound, Video } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { MentorCard } from '@/components/MentorCard';
 import { Ring, Stagger, StaggerItem } from '@/components/motion';
-import TearTicket from '@/components/ui/tear-ticket';
+import { SessionPass, soonestMeeting } from '@/components/SessionPass';
 import { Avatar, Card, EmptyState, LinkButton, PageLoader, Stat, StatusBadge, useToast } from '@/components/ui';
 import { post } from '@/lib/api';
 import { fmtDateTime, relTime } from '@/lib/format';
 import { useApi } from '@/lib/hooks';
-import { useTheme } from '@/lib/theme';
 import type { Mentor, MentorshipRequest, Mentorship } from '@/lib/types';
 
 /** Profile strength drives match quality, so we show it and nudge towards completing it. */
@@ -31,8 +29,6 @@ function strength(p: any): { pct: number; missing: string[] } {
 
 export default function StudentHome() {
   const toast = useToast();
-  const router = useRouter();
-  const dark = useTheme().theme === 'dark';
   const profile = useApi<{ profile: any; throttle: any }>('/students/me');
   const ms = useApi<{ mentorships: Mentorship[] }>('/mentorships');
   const reqs = useApi<{ requests: MentorshipRequest[] }>('/requests');
@@ -46,6 +42,7 @@ export default function StudentHome() {
   const pendingReqs = (reqs.data?.requests ?? []).filter((r) => r.status === 'pending');
   const recent = (reqs.data?.requests ?? []).slice(0, 5);
   const { pct, missing } = strength(p);
+  const pass = soonestMeeting(active, (m) => m.mentor.name);
   const nextSession = active.filter((m) => m.nextSessionAt).sort((a, b) => +new Date(a.nextSessionAt!) - +new Date(b.nextSessionAt!))[0];
 
   // The single most useful thing to do next.
@@ -107,43 +104,10 @@ export default function StudentHome() {
         </div>
       </motion.div>
 
-      {/* the next session as a pass: tearing the stub opens the session (navigation only) */}
-      {nextSession && (
-        <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }} className="mb-8 flex flex-col items-center rounded-[22px] bg-ink-900/[0.03] px-4 py-8" aria-label="Your next session">
-          <div className="w-full max-w-[480px] drop-shadow-[0_24px_40px_rgba(0,0,0,0.12)] dark:drop-shadow-[0_24px_40px_rgba(0,0,0,0.6)]">
-            <TearTicket
-              width={480}
-              height={220}
-              stubSize={140}
-              radius={20}
-              rotate={-2}
-              tiltMax={6}
-              background={dark ? '#1c1c1e' : '#ffffff'}
-              color={dark ? '#f5f5f7' : '#1d1d1f'}
-              ariaLabel={`Tear the stub to open your session with ${nextSession.mentor.name}`}
-              onTear={() => router.push(`/mentorships/${nextSession.id}?tab=sessions`)}
-              stub={
-                <div className="flex h-full flex-col items-center justify-center gap-1 px-3 text-center">
-                  <span className="text-[10.5px] font-semibold uppercase tracking-[0.12em] opacity-50">Admit one</span>
-                  <span className="text-[20px] font-semibold tracking-[-0.03em]">Open</span>
-                  <span className="mt-2 text-[11px] opacity-50">Pull to tear ›</span>
-                </div>
-              }
-            >
-              <div className="flex h-full flex-col justify-between p-6">
-                <div>
-                  <span className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-brand-600 dark:text-[#2997ff]">Next session · {relTime(nextSession.nextSessionAt)}</span>
-                  <p className="mt-2 truncate text-[22px] font-semibold leading-tight tracking-[-0.03em]">{nextSession.mentor.name}</p>
-                  <p className="mt-1 truncate text-[13px] opacity-60">{nextSession.mentor.headline}</p>
-                </div>
-                <div className="text-[12px]">
-                  <div className="opacity-45">When</div>
-                  <div className="mt-0.5 font-semibold">{fmtDateTime(nextSession.nextSessionAt)}</div>
-                </div>
-              </div>
-            </TearTicket>
-          </div>
-          <p className="mt-5 text-[13px] text-ink-500">The video link and calendar file are on the session page.</p>
+      {/* the next meeting as a pass: tearing the stub joins the video call */}
+      {pass && (
+        <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }} className="mb-8 rounded-[22px] bg-ink-900/[0.03] px-4 py-8" aria-label="Your next session">
+          <SessionPass meeting={pass.meeting} withName={pass.withName} mentorshipId={pass.mentorshipId} />
         </motion.section>
       )}
 

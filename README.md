@@ -239,7 +239,7 @@ docs/    PRIVACY.md (field-by-field statement), API.md
 npm test
 ```
 
-The suite has 119 tests in 11 files. Each file runs against its own throw-away in-memory MongoDB. CI (`.github/workflows/ci.yml`) runs the type checks, these tests and both production builds on every push and pull request.
+The suite has 127 tests in 13 files. Each file runs against its own throw-away in-memory MongoDB. CI (`.github/workflows/ci.yml`) runs the type checks, these tests and both production builds on every push and pull request.
 
 | Spec requirement | Test file | What it proves |
 |------------------|-----------|----------------|
@@ -305,7 +305,9 @@ This is a production setup: put the values it asks for (`JWT_SECRET`, `DATA_ENCR
 **First-visit intro.** The first time a browser opens the site, the logo forms in liquid glass and the page fades in (`components/IntroSplash.tsx`). It is shown once per browser (`amn.intro` in local storage), skipped under "reduce motion", ends on click, Escape or Skip, and can never run longer than six seconds. To see it again, clear that key.
 
 **Other UX**
-- **Student home** built around one adaptive "next best step", with a profile-strength ring. When a session is booked it appears as a session pass: tearing the stub opens the session page.
+- **Student home** built around one adaptive "next best step", with a profile-strength ring.
+- **Session pass** (`components/SessionPass.tsx`): when a student and mentor have a confirmed meeting, both see it as a ticket on their home page and on the mentorship's Sessions tab, from booking until it ends ("Live now" while it's on). Tearing the stub (drag it, or focus it and press Enter) opens the video call directly, in the same tab. The API sends each participant their mentorship's `nextMeeting`; staff never get meeting links (`tests/sessionPass.test.ts`).
+- **Onboarding** (`components/Onboarding.tsx`): a short full-screen setup for new students (welcome, how it works, what they're aiming for) and new alumni (welcome, verification, how they'd like to help). Answers are saved to the profile. It shows once per account on any device: sign-up sets `onboardingPending`, and finishing or skipping clears it for good. Older, seeded and staff accounts never see it (`tests/onboarding.test.ts`).
 - **Your data** (Settings): the data export as a glass folder with four parts; open it and pick a part to download just that, or download everything.
 - **Mentor inbox** as a keyboard master–detail view: ↑↓ to browse, **A** to accept, **D** to decline.
 - **Alumni verification** as a 4-step wizard (Identity → Programme → Document → Review).
