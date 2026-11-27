@@ -6,7 +6,14 @@ export class ApiError extends Error {
 
 /** Fetch wrapper for the same-origin /api proxy. Cookies carry the session. */
 export async function api<T = any>(path: string, opts: { method?: string; body?: unknown; form?: FormData } = {}): Promise<T> {
-  const res = await fetch(`/api${path}`, {
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  const baseUrl =
+    typeof window === 'undefined'
+      ? (process.env.API_URL ? `${process.env.API_URL.replace(/\/$/, '')}/api` : 'http://localhost:4000/api')
+      : '/api';
+  const url = typeof window === 'undefined' ? `${baseUrl}${cleanPath}` : `/api${cleanPath}`;
+
+  const res = await fetch(url, {
     method: opts.method ?? (opts.body || opts.form ? 'POST' : 'GET'),
     credentials: 'include',
     headers: opts.form ? undefined : opts.body !== undefined ? { 'Content-Type': 'application/json' } : undefined,

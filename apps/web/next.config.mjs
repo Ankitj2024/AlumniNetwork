@@ -2,7 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /** @type {import('next').NextConfig} */
-const API = process.env.API_URL ?? 'http://localhost:4000';
+const API = (process.env.API_URL ?? 'http://localhost:4000').replace(/\/$/, '');
 const repoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 const nextConfig = {
