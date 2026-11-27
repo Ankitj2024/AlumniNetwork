@@ -227,7 +227,7 @@ export function Onboarding() {
   const last = step === total - 1;
 
   return (
-    <motion.div className="fixed inset-0 z-[80] flex flex-col bg-canvas" role="dialog" aria-modal="true" aria-label="Welcome to Alumni Mentor Network" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.35 }}>
+    <motion.div className="fixed inset-0 z-[80] flex flex-col bg-fade" role="dialog" aria-modal="true" aria-label="Welcome to Alumni Mentor Network" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.35 }}>
       {/* progress */}
       <div className="h-1 w-full bg-ink-900/[0.06]">
         <motion.div className="h-full bg-brand-600" animate={{ width: `${((step + 1) / total) * 100}%` }} transition={{ duration: 0.5, ease: EASE }} />

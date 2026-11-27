@@ -99,7 +99,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   if (loading || !me) return <PageLoader />;
   if (me.security?.mfaSetupRequired) {
     return (
-      <div className="min-h-screen bg-canvas px-4 py-10">
+      <div className="min-h-screen px-4 py-10">
         <StaffMfaGate />
       </div>
     );
@@ -128,9 +128,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="relative min-h-screen bg-canvas lg:flex">
+    <div className="relative min-h-screen lg:flex">
       {/* desktop: docked sidebar */}
-      <div className={cx('sticky top-0 hidden h-screen shrink-0 border-r border-[color:var(--line)] bg-surface/60 transition-[width] duration-300 lg:block', collapsed ? 'w-[68px]' : 'w-[256px]')}>{sidebar(collapsed, false)}</div>
+      <div className={cx('sticky top-0 hidden h-screen shrink-0 border-r border-[color:var(--line)] bg-surface/55 backdrop-blur-2xl transition-[width] duration-300 lg:block', collapsed ? 'w-[68px]' : 'w-[256px]')}>{sidebar(collapsed, false)}</div>
 
       {/* phones: the same sidebar in a drawer */}
       <AnimatePresence>
@@ -156,7 +156,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       {/* main column */}
       <div className="relative flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-[color:var(--line)] bg-canvas/80 px-3 backdrop-blur-2xl backdrop-saturate-150 sm:px-4 lg:hidden">
+        <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-[color:var(--line)] bg-white/55 px-3 backdrop-blur-2xl dark:bg-black/45 backdrop-saturate-150 sm:px-4 lg:hidden">
           <button ref={menuButton} className="btn-ghost relative p-2" onClick={() => setDrawer(true)} aria-label={unread > 0 ? `Open menu, ${unread} unread notifications` : 'Open menu'} aria-expanded={drawer} aria-controls="app-drawer">
             <Menu size={20} />
             {unread > 0 && <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-brand-600 ring-2 ring-canvas" />}

@@ -66,10 +66,9 @@ export default function Landing() {
   const scale = useTransform(scrollYProgress, [0, 1], [0.94, 1]);
 
   return (
-    <div className="bg-canvas text-ink-900">
+    <div className="text-ink-900">
       {/* ───────────────────────────── hero */}
       <section className="relative overflow-hidden">
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[720px] bg-[radial-gradient(60%_50%_at_50%_0%,rgba(0,113,227,0.10),transparent_70%)] dark:bg-[radial-gradient(60%_50%_at_50%_0%,rgba(41,151,255,0.16),transparent_70%)]" />
         <div className="relative mx-auto max-w-6xl px-5 pt-16 text-center sm:px-6 sm:pt-24">
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE }}>
             <Link href="/#product" className="inline-flex items-center gap-2 rounded-full border border-[color:var(--line)] bg-surface/70 py-1 pl-1 pr-3 text-[13px] text-ink-600 backdrop-blur transition hover:border-[color:var(--line-strong)]">

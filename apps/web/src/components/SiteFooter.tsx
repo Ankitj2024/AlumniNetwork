@@ -34,7 +34,7 @@ const COLUMNS: { title: string; links: [string, string][] }[] = [
 /** The public footer: brand, three link columns, and the legal line. Every link resolves. */
 export function SiteFooter() {
   return (
-    <footer className="border-t border-[color:var(--line)] bg-canvas">
+    <footer className="border-t border-[color:var(--line)]">
       <div className="mx-auto grid max-w-6xl gap-10 px-5 py-14 sm:px-6 md:grid-cols-[1.3fr_repeat(3,1fr)]">
         <div>
           <Link href="/" className="inline-flex items-center gap-2.5" aria-label="Alumni Mentor Network home">

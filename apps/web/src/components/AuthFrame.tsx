@@ -8,7 +8,7 @@ import { LogoMark } from './Logo';
  */
 export function AuthFrame({ title, subtitle, children, footer }: { title: string; subtitle?: string; children: React.ReactNode; footer?: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-canvas text-ink-900">
+    <div className="min-h-screen text-ink-900">
       <main className="mx-auto flex w-full max-w-[440px] flex-col items-center px-5 pb-16 pt-10 sm:pt-16">
         <motion.div className="w-full" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>
           <div className="text-center">

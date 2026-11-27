@@ -35,7 +35,7 @@ function apply(theme: ResolvedTheme, animate: boolean) {
   }
   root.classList.toggle('dark', theme === 'dark');
   root.style.colorScheme = theme;
-  document.querySelector('meta[name="theme-color"]:not([media])')?.setAttribute('content', theme === 'dark' ? '#000000' : '#f5f5f7');
+  document.querySelector('meta[name="theme-color"]:not([media])')?.setAttribute('content', theme === 'dark' ? '#06162f' : '#e4eefc');
 }
 
 interface ThemeCtx {

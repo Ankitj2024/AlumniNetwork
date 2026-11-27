@@ -22,7 +22,7 @@ const NEVER = ['Email address', 'Phone number', 'LinkedIn or other social profil
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-canvas">
+    <div className="min-h-screen">
       <div className="mx-auto max-w-3xl px-5 py-14 sm:px-6 sm:py-20">
         <h1 className="text-[40px] font-semibold leading-[1.05] tracking-[-0.04em] sm:text-[52px]">Privacy statement</h1>
         <p className="mt-3 text-ink-600">

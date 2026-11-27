@@ -5,7 +5,7 @@ export const metadata = { title: 'Page not found' };
 
 export default function NotFound() {
   return (
-    <div className="flex min-h-screen flex-col bg-canvas">
+    <div className="flex min-h-screen flex-col">
       <SiteHeader />
       <main className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center px-5 py-20 text-center">
         <p className="text-[15px] font-semibold text-ink-400">404</p>

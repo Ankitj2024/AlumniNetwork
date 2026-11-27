@@ -311,3 +311,27 @@ html[data-intro] body {
 .legal a { color: #0066cc; text-decoration: underline; text-underline-offset: 3px; }
 .dark .legal a { color: #2997ff; }
 .legal strong { color: rgb(var(--ink-900)); font-weight: 600; }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Fading blue background. A fixed layer behind every page: a soft blue at the
+   top of the window that fades into the page grey (deep blue into black in
+   dark mode). Page wrappers are transparent so it shows through; cards stay
+   solid. `.bg-fade` paints the same thing on full-screen overlays.
+   ───────────────────────────────────────────────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--fade-bg);
+}
+.bg-fade {
+  background: var(--fade-bg);
+}
+:root {
+  --fade-bg: radial-gradient(110% 65% at 50% 0%, rgba(0, 113, 227, 0.17) 0%, rgba(0, 113, 227, 0.07) 42%, rgba(0, 113, 227, 0) 78%), linear-gradient(180deg, #e4eefc 0%, #eef3fb 28%, #f5f5f7 60%);
+}
+.dark {
+  --fade-bg: radial-gradient(110% 65% at 50% 0%, rgba(41, 151, 255, 0.26) 0%, rgba(41, 151, 255, 0.09) 42%, rgba(41, 151, 255, 0) 78%), linear-gradient(180deg, #06162f 0%, #030a17 30%, #000000 60%);
+}
